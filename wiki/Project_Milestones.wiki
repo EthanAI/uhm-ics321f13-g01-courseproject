@@ -1,0 +1,19 @@
+#summary Listing of project milestones.
+#labels Phase-Requirements
+
+= Project Milestones =
+
+The following list of milestones and their associated dates will be observed for the duration of development. 
+
+
+= Milestone Listing =
+
+*M1* - Foundation feature set complete. This includes DB2, JDBC, and the DataModel
+
+*M2* - Alpha. Core feature set complete. This includes the View and Controller.
+
+*M3* - Stable. Debugged and ready for Part 1 presentation.
+
+*M4* - Beta. Feature complete / Part 2 integration complete.
+
+*M5* - ZBR. Program is complete, functional, robust, and ready to be submitted.
