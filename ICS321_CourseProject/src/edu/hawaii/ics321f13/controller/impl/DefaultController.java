@@ -1,4 +1,4 @@
-package edu.hawaii.ics321f13.controller;
+package edu.hawaii.ics321f13.controller.impl;
 
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
 
