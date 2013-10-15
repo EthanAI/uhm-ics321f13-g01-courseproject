@@ -1,7 +1,7 @@
 /**
  * 
  */
-package edu.hawaii.ics321f13.controller;
+package edu.hawaii.ics321f13.controller.impl;
 
 /**
  * This is the project Main-Class. Minimally functions to establish program "ready" state, after which control is
@@ -12,7 +12,7 @@ package edu.hawaii.ics321f13.controller;
  * @author Kyle Twogood
  *
  */
-public class CourseProjectMain {
+public class ProjectMain {
 
 	/**
 	 * Program entry point. Serves as initializer and subsequently passes control to appropriate <code>Controller</code>
