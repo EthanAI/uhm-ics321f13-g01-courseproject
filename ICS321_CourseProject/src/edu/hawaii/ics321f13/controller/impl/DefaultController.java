@@ -52,16 +52,17 @@ public class DefaultController implements Controller {
 	 * @param login - the login credentials used to connect to the underlying <code>Database</code> instance.
 	 */
 	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory, LoginInfo login) {
+		LoginInfo m_login = login;
 		MODEL_FACTORY = Objects.requireNonNull(modelFactory);
 		VIEW_FACTORY = Objects.requireNonNull(viewFactory);
-		if(login == null) {
+		if(m_login == null) {
 			LoginPrompt loginPrompt = VIEW_FACTORY.createLoginPrompt();
-			login = loginPrompt.getLoginInfo();
+			m_login = loginPrompt.getLoginInfo();
 		}
-		MODEL = MODEL_FACTORY.fromLogin(login);
+		MODEL = MODEL_FACTORY.fromLogin(m_login);
 		try {
 			// Dispose of sensitive information.
-			login.close();
+			m_login.close();
 		} catch (IOException e) {
 			// Should never happen.
 			e.printStackTrace();
