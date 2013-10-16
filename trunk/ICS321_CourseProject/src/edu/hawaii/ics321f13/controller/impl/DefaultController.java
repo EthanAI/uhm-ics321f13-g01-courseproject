@@ -1,19 +1,105 @@
 package edu.hawaii.ics321f13.controller.impl;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.Objects;
+
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
+import edu.hawaii.ics321f13.model.interfaces.DataModelFactory;
+import edu.hawaii.ics321f13.model.interfaces.LoginInfo;
+import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
+import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
+import edu.hawaii.ics321f13.model.interfaces.SearchableModel;
+import edu.hawaii.ics321f13.view.impl.ViewEventType;
+import edu.hawaii.ics321f13.view.interfaces.View;
+import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
 
+/**
+ * Provides a communication channel between the <code>Model</code> and the <code>View</code>. Updates to or from 
+ * either component is moderated by this class.
+ * 
+ * @author Kyle Twogood
+ *
+ */
 public class DefaultController implements Controller {
+	
+	// Factory objects.
+	private final DataModelFactory MODEL_FACTORY;
+	private final ViewFactory VIEW_FACTORY;
+	// Program components.
+	private final SearchableModel MODEL;			// Application data model.
+	private final View VIEW;						// Main user-facing GUI.
+	
+	/**
+	 * Creates a new <code>DefaultController</code> instance, prompting the user for the required login credentials.
+	 * 
+	 * @param modelFactory - the <code>DataModelFactory</code> instance which will be used to initialize a new 
+	 * <code>SearchableModel</code> instance.
+	 * @param viewFactory - the <code>ViewFactory</code> instance which will be used to instantiate all GUI objects.
+	 */
+	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory) {
+		this(modelFactory, viewFactory, null);
+	}
+	
+	/**
+	 * Creates a new <code>DefaultController</code> instance using the specified login credentials.
+	 * 
+	 * @param modelFactory - the <code>DataModelFactory</code> instance which will be used to initialize a new 
+	 * <code>SearchableModel</code> instance.
+	 * @param viewFactory - the <code>ViewFactory</code> instance which will be used to instantiate all GUI objects.
+	 * @param login - the login credentials used to connect to the underlying <code>Database</code> instance.
+	 */
+	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory, LoginInfo login) {
+		MODEL_FACTORY = Objects.requireNonNull(modelFactory);
+		VIEW_FACTORY = Objects.requireNonNull(viewFactory);
+		if(login == null) {
+			LoginPrompt loginPrompt = VIEW_FACTORY.createLoginPrompt();
+			login = loginPrompt.getLoginInfo();
+		}
+		MODEL = MODEL_FACTORY.fromLogin(login);
+		try {
+			// Dispose of sensitive information.
+			login.close();
+		} catch (IOException e) {
+			// Should never happen.
+			e.printStackTrace();
+		}
+		VIEW = VIEW_FACTORY.createView();
+		VIEW.addActionListener(new ActionListener() {
 
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(e.getID() == ViewEventType.QUERY.getID()) {
+					onQuery(Objects.requireNonNull(e.getActionCommand()));
+				} else if(e.getID() == ViewEventType.CLOSE.getID()) {
+					onClose();
+				} else {
+					throw new UnsupportedOperationException(
+							String.format("unsupported message type received from view: %s (event ID: $d)", 
+									(e.getActionCommand() == null ? "no command specified" : e.getActionCommand()), 
+									e.getID()));
+				}
+			}
+			
+		});
+	}
+	
 	@Override
 	public void onQuery(String searchTerm) {
-		// TODO Auto-generated method stub
-
+		MODEL.search(searchTerm, BufferedImage.class, ResultConstraint.CONTAINS);
 	}
 
 	@Override
 	public void onClose() {
-		// TODO Auto-generated method stub
-
+		try {
+			MODEL.close();
+		} catch (IOException e) {
+			// If the attempt to manually close the connection to the database fails, the connection will
+			// be closed automatically.
+			e.printStackTrace();
+		}
 	}
 
 }
