@@ -129,22 +129,22 @@ public class DefaultView extends JFrame {
 		txtSearch.setText("  Search images...");
 		txtSearch.setColumns(10);
 		
-		JButton btnNewButton = new JButton("->");
-		btnNewButton.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+		JButton btnNewButton = new JButton("\u2713");
+		btnNewButton.setFont(new Font("DialogInput", btnNewButton.getFont().getStyle(), 30));
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 			}
 		});
 		
-		JButton btnNewButton_1 = new JButton("<");
-		btnNewButton_1.setFont(new Font("Segoe UI Semibold", Font.BOLD, 26));
+		JButton btnNewButton_1 = new JButton("\u21E6");
+		btnNewButton_1.setFont(new Font("DialogInput", btnNewButton_1.getFont().getStyle(), 30));
 		btnNewButton_1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 			}
 		});
 		
-		JButton button = new JButton(">");
-		button.setFont(new Font("Segoe UI Semibold", Font.BOLD, 26));
+		JButton btnue = new JButton("\u21E8");
+		btnue.setFont(new Font("DialogInput", btnue.getFont().getStyle(), 30));
 		
 		JLabel lblWikiImages = new JLabel("Wiki Images");
 		lblWikiImages.setForeground(SystemColor.activeCaption);
@@ -156,28 +156,28 @@ public class DefaultView extends JFrame {
 				.addGroup(gl_panel.createSequentialGroup()
 					.addContainerGap()
 					.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
-						.addComponent(lblWikiImages, GroupLayout.DEFAULT_SIZE, 729, Short.MAX_VALUE)
+						.addComponent(lblWikiImages, GroupLayout.DEFAULT_SIZE, 739, Short.MAX_VALUE)
 						.addGroup(gl_panel.createSequentialGroup()
 							.addComponent(btnNewButton_1, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE)
 							.addGap(18)
-							.addComponent(txtSearch, GroupLayout.DEFAULT_SIZE, 486, Short.MAX_VALUE)
+							.addComponent(txtSearch, GroupLayout.DEFAULT_SIZE, 496, Short.MAX_VALUE)
 							.addGap(10)
 							.addComponent(btnNewButton, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE)
 							.addGap(18)
-							.addComponent(button, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE)))
+							.addComponent(btnue, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE)))
 					.addContainerGap())
 		);
 		gl_panel.setVerticalGroup(
-			gl_panel.createParallelGroup(Alignment.TRAILING)
-				.addGroup(Alignment.LEADING, gl_panel.createSequentialGroup()
+			gl_panel.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_panel.createSequentialGroup()
 					.addGap(20)
 					.addComponent(lblWikiImages, GroupLayout.PREFERRED_SIZE, 65, GroupLayout.PREFERRED_SIZE)
 					.addGap(18)
-					.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
-						.addComponent(txtSearch, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE)
-						.addComponent(btnNewButton, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE)
-						.addComponent(button, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE)
-						.addComponent(btnNewButton_1, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+					.addGroup(gl_panel.createParallelGroup(Alignment.TRAILING)
+						.addComponent(btnue, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+						.addComponent(txtSearch, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE)
+						.addComponent(btnNewButton, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE)
+						.addComponent(btnNewButton_1, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE))
 					.addContainerGap())
 		);
 		panel.setLayout(gl_panel);
