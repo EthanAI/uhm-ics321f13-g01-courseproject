@@ -3,6 +3,7 @@ package edu.hawaii.ics321f13.view.impl;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Insets;
 
 import javax.swing.BorderFactory;
@@ -54,6 +55,7 @@ public class DefaultView extends JFrame implements View {
 		contentPane.setBackground(Color.WHITE);
 		contentPane.setBorder(null);
 		setContentPane(contentPane);
+		setMinimumSize(new Dimension(500, 600));
 		
 		JPanel panel = new JPanel();
 		panel.setBackground(Color.WHITE);
@@ -121,22 +123,22 @@ public class DefaultView extends JFrame implements View {
 		txtSearch.setText("Search images...");
 		txtSearch.setColumns(10);
 		
-		JButton btnNewButton = new JButton("\u2713");
-		btnNewButton.setFont(new Font("DialogInput", btnNewButton.getFont().getStyle(), 30));
+		JButton btnNewButton = new JButton("\u2794");
+		btnNewButton.setFont(new Font("Segoe UI Symbol", btnNewButton.getFont().getStyle(), 30));
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 			}
 		});
 		
-		JButton btnNewButton_1 = new JButton("\u21E6");
-		btnNewButton_1.setFont(new Font("DialogInput", btnNewButton_1.getFont().getStyle(), 30));
+		JButton btnNewButton_1 = new JButton("\u2770");
+		btnNewButton_1.setFont(new Font("Segoe UI Symbol", btnNewButton_1.getFont().getStyle(), 30));
 		btnNewButton_1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 			}
 		});
 		
-		JButton btnue = new JButton("\u21E8");
-		btnue.setFont(new Font("DialogInput", btnue.getFont().getStyle(), 30));
+		JButton btnue = new JButton("\u2771");
+		btnue.setFont(new Font("Segoe UI Symbol", btnue.getFont().getStyle(), 30));
 		
 		JLabel lblWikiImages = new JLabel("Wiki Images");
 		lblWikiImages.setForeground(SystemColor.activeCaption);
@@ -154,8 +156,8 @@ public class DefaultView extends JFrame implements View {
 							.addGap(18)
 							.addComponent(txtSearch, GroupLayout.DEFAULT_SIZE, 496, Short.MAX_VALUE)
 							.addGap(10)
-							.addComponent(btnNewButton, GroupLayout.PREFERRED_SIZE, 63, GroupLayout.PREFERRED_SIZE)
-							.addGap(18)
+							.addComponent(btnNewButton, GroupLayout.PREFERRED_SIZE, 71, GroupLayout.PREFERRED_SIZE)
+							.addPreferredGap(ComponentPlacement.UNRELATED)
 							.addComponent(btnue, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE)))
 					.addContainerGap())
 		);
@@ -166,9 +168,9 @@ public class DefaultView extends JFrame implements View {
 					.addComponent(lblWikiImages, GroupLayout.PREFERRED_SIZE, 65, GroupLayout.PREFERRED_SIZE)
 					.addGap(18)
 					.addGroup(gl_panel.createParallelGroup(Alignment.TRAILING)
+						.addComponent(btnNewButton, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE)
 						.addComponent(btnue, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 						.addComponent(txtSearch, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE)
-						.addComponent(btnNewButton, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE)
 						.addComponent(btnNewButton_1, GroupLayout.DEFAULT_SIZE, 49, Short.MAX_VALUE))
 					.addContainerGap())
 		);
