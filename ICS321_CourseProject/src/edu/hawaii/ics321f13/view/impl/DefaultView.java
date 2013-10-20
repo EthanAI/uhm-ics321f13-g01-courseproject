@@ -75,8 +75,8 @@ public class DefaultView extends JFrame implements View {
 	/** Serialization support. */
 	private static final long serialVersionUID = 1L;
 	
-	private final int STD_IMAGE_HEIGHT = 80;
-	private final int STD_IMAGE_WIDTH = 80;
+	private final int STD_IMAGE_HEIGHT = 100;
+	private final int STD_IMAGE_WIDTH = 100;
 	private final int STD_TEXT_HEIGHT = 25;
 	private final int CELL_PADDING = 10;
 	
