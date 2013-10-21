@@ -25,6 +25,10 @@ import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
  */
 public class DefaultController implements Controller {
 	
+	// Default mysql port.
+	private static final int DEFAULT_PORT = 3306;
+	private static final int MAX_PORT = 65535;
+	private static final int MIN_PORT = 1;
 	// Factory objects.
 	private final DataModelFactory MODEL_FACTORY;
 	private final ViewFactory VIEW_FACTORY;
@@ -40,7 +44,7 @@ public class DefaultController implements Controller {
 	 * @param viewFactory - the <code>ViewFactory</code> instance which will be used to instantiate all GUI objects.
 	 */
 	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory) {
-		this(modelFactory, viewFactory, null);
+		this(modelFactory, viewFactory, null, DEFAULT_PORT);
 	}
 	
 	/**
@@ -50,16 +54,20 @@ public class DefaultController implements Controller {
 	 * <code>SearchableModel</code> instance.
 	 * @param viewFactory - the <code>ViewFactory</code> instance which will be used to instantiate all GUI objects.
 	 * @param login - the login credentials used to connect to the underlying <code>Database</code> instance.
+	 * @param port - the port used to connect to the underlying <code>Database</code>
 	 */
-	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory, LoginInfo login) {
+	public DefaultController(DataModelFactory modelFactory,	ViewFactory viewFactory, LoginInfo login, int port) {
 		LoginInfo m_login = login;
 		MODEL_FACTORY = Objects.requireNonNull(modelFactory);
 		VIEW_FACTORY = Objects.requireNonNull(viewFactory);
+		if(port < MIN_PORT || port > MAX_PORT) {
+			throw new IllegalArgumentException("port number out of valid range (1 - 65535)");
+		}
 		if(m_login == null) {
 			LoginPrompt loginPrompt = VIEW_FACTORY.createLoginPrompt();
 			m_login = loginPrompt.getLoginInfo();
 		}
-		MODEL = MODEL_FACTORY.fromLogin(m_login);
+		MODEL = MODEL_FACTORY.fromLogin(m_login, port);
 		try {
 			// Dispose of sensitive information.
 			m_login.close();
