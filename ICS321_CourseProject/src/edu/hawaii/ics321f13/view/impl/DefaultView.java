@@ -172,7 +172,7 @@ public class DefaultView extends JFrame implements View {
 				new Color(210, 210, 210), new Color(160, 160, 160), new Color(185, 185, 185));
 		btnSearch.setBackground(Color.WHITE);
 		
-		JLabel btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
+		JLabel btnPrevious = new MetroButton("\uE071"/*"\u2770"*/, new Font("Segoe UI Symbol", Font.PLAIN, 42), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnPrevious.setBackground(Color.WHITE);
 		
