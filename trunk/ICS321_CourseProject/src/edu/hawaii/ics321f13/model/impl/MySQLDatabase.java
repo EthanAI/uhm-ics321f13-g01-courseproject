@@ -2,6 +2,7 @@ package edu.hawaii.ics321f13.model.impl;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -14,8 +15,15 @@ public class MySQLDatabase implements Database {
 	private final Connection CONN;
 	private boolean isClosed = false;
 	
-	public MySQLDatabase(LoginInfo login, int port) {
-		String connectionURL = "jdbc:mysql://localhost:%d/database";
+	private final boolean DEBUG = true;
+	
+	public MySQLDatabase(LoginInfo login, int port) throws SQLException {
+		String connectionURL = String.format("jdbc:mysql://localhost:%d/database", port);
+		if(!DEBUG) {
+			CONN = DriverManager.getConnection(connectionURL, login.getUserName(), new String(login.getPassword()));
+		} else {
+			CONN = null;
+		}
 	}
 
 	@Override
