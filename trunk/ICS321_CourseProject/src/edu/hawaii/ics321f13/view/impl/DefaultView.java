@@ -14,6 +14,7 @@ import java.awt.Insets;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 
 import javax.swing.BorderFactory;
@@ -29,6 +30,7 @@ import javax.swing.JTable;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.ListSelectionModel;
 import javax.swing.JScrollPane;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
@@ -55,16 +57,24 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.TimerTask;
+import java.util.concurrent.Semaphore;
 
 import javax.swing.ScrollPaneConstants;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
+import edu.hawaii.ics321f13.model.interfaces.Traverser;
+import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
+import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 import edu.hawaii.ics321f13.view.interfaces.View;
 import javax.swing.border.CompoundBorder;
@@ -74,21 +84,40 @@ public class DefaultView extends JFrame implements View {
 
 	/** Serialization support. */
 	private static final long serialVersionUID = 1L;
-	
-	private final int STD_IMAGE_HEIGHT = 100;
-	private final int STD_IMAGE_WIDTH = 100;
-	private final int STD_TEXT_HEIGHT = 25;
-	private final int CELL_PADDING = 10;
-	
+	// Image loader.
+	private final ImageLoader LOADER;
+	// View interface implementation objects.
+	private EventListenerList listeners = new EventListenerList();
+	private Traversable<ImageResult> imageSourceTraversable = null;
+	private Traverser<ImageResult> imageSource = null;
+	private ArrayList<ImageTransformer> imageTransformers = new ArrayList<ImageTransformer>();
+	private Timer animationTimer = null;
+	private BusyGlassPane busyPane = null;
+	private volatile boolean isLoading = false;
+	// View constants.
+	private final int STD_IMAGE_HEIGHT = 90;
+	private final int STD_IMAGE_WIDTH = 90;
+	private final int STD_ROW_COUNT = 4;
+	private final int STD_COL_COUNT = 8;
+	// View variables.
+	private int currentPageCursorPos = 0;
+	private int currentPage = 0;
+	private int pageCount = 0;
+	// View components. 
 	private Point lastRolloverCell = null;
 	private JPanel contentPane;
 	private JTable tblImageResults;
 	private JTextField txtSearchField;
+	private DefaultTableModel imageResultsModel = new DefaultTableModel();
+	private JScrollPane scrollPaneImageResults = new JScrollPane();
 
 	/**
 	 * Create the frame.
 	 */
-	public DefaultView() {
+	public DefaultView(ImageLoader loader) {
+		// Set the LOADER field.
+		LOADER = loader;
+		// Set up the view.
 		setTitle("Wikipedia Image Search");
 		setFont(new Font("Segoe UI", Font.PLAIN, 12));
 		setBackground(Color.WHITE);
@@ -103,7 +132,6 @@ public class DefaultView extends JFrame implements View {
 		JPanel panelControls = new JPanel();
 		panelControls.setBackground(Color.WHITE);
 		
-		JScrollPane scrollPaneImageResults = new JScrollPane();
 		scrollPaneImageResults.setBackground(Color.WHITE);
 		scrollPaneImageResults.setForeground(Color.WHITE);
 		scrollPaneImageResults.getViewport().setBackground(Color.WHITE);
@@ -168,17 +196,46 @@ public class DefaultView extends JFrame implements View {
 		
 		// To use GUI editor, comment out this block.
 		// START BLOCK
-		JLabel btnSearch = new MetroButton("\u2794", new Font("Segoe UI Symbol", Font.PLAIN, 70), 
+		MetroButton btnSearch = new MetroButton("\u2794", new Font("Segoe UI Symbol", Font.PLAIN, 70), 
 				new Color(210, 210, 210), new Color(160, 160, 160), new Color(185, 185, 185));
 		btnSearch.setBackground(Color.WHITE);
+		btnSearch.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Remove, debug harness.
+				clear();
+				boolean hasNext = loadPage(0);
+				if(hasNext) {
+					loadPage(1);
+				}
+			}
+			
+		});
 		
-		JLabel btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 42), 
+		MetroButton btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnPrevious.setBackground(Color.WHITE);
+		btnPrevious.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				previousPage();
+			}
+			
+		});
 		
-		JLabel btnNext = new MetroButton("\u2771", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
+		MetroButton btnNext = new MetroButton("\u2771", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnNext.setBackground(Color.WHITE);
+		btnNext.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				nextPage(false);
+			}
+			
+		});
 		
 		MetroButton lblInfo = new MetroButton("?", new Font("Segoe UI Semibold", Font.PLAIN, 16), 
 				new Color(210, 210, 210), new Color(130, 130, 130), new Color(175, 175, 175));
@@ -264,17 +321,14 @@ public class DefaultView extends JFrame implements View {
 		tblImageResults.setShowVerticalLines(false);
 		tblImageResults.getColumnModel().setColumnMargin(0);
 		tblImageResults.setRowMargin(0);
-		tblImageResults.setRowHeight(STD_IMAGE_HEIGHT + STD_TEXT_HEIGHT + CELL_PADDING);
 		tblImageResults.setRowSelectionAllowed(false);
 		tblImageResults.setTableHeader(null);
 		tblImageResults.setBorder(null);
 		tblImageResults.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		tblImageResults.setCellSelectionEnabled(true);
-		// Set column widths.
-		Enumeration<TableColumn> columns = tblImageResults.getColumnModel().getColumns();
-		while(columns.hasMoreElements()) {
-			columns.nextElement().setWidth(STD_IMAGE_WIDTH + CELL_PADDING);
-		}
+		tblImageResults.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		tblImageResults.setAutoscrolls(false);
+		tblImageResults.setDragEnabled(false);
 		
 		tblImageResults.addMouseListener(new MouseAdapter() {
 			
@@ -322,88 +376,75 @@ public class DefaultView extends JFrame implements View {
 			
 		});
 		tblImageResults.setDefaultRenderer(Object.class, new ImageTableCellRenderer(Color.WHITE, new Color(235, 235, 255), 
-				new Color(220, 220, 250), new Color(200, 200, 200), new Color(180, 180, 180), new Color(160, 160, 160), new Font("Segoe UI Light", Font.PLAIN, 15), 
-				new Font("Segoe UI Light", Font.PLAIN, 15), SwingConstants.CENTER, SwingConstants.CENTER));
+				new Color(220, 220, 250), new Color(200, 200, 200), new Color(180, 180, 180), new Color(160, 160, 160), 
+				new Font("Segoe UI Light", Font.PLAIN, 15), new Font("Segoe UI Light", Font.PLAIN, 15), 
+				SwingConstants.CENTER, SwingConstants.CENTER));
 		// TODO Remove: test harness.
-		final Icon TEST;
-		Icon temp = null;
-		try {
-			temp = new ImageIcon(ImageIO.read(new URL("http://i285.photobucket.com/albums/ll45/M00NGRL67/Backgrounds/Green/CheckeredGreen.jpg")));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		TEST = temp;
-		tblImageResults.setModel(new DefaultTableModel(
-			new Object[][] {
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-				{TEST, TEST, TEST, TEST, TEST, TEST, TEST, TEST},
-			},
-			new String[] {
-				"New column", "New column", "New column", "New column", "New column", "New column", "New column", "New column"
-			}
-		));
+		imageSource = new DummyTraverser();
+		imageSourceTraversable = new DummySingletonTraversable(imageSource);
+		// Initial configuration of the data model.
+		imageResultsModel.setColumnCount(STD_COL_COUNT);
+		imageResultsModel.setRowCount(STD_ROW_COUNT);
+		tblImageResults.setModel(imageResultsModel);
+		
 		scrollPaneImageResults.setViewportView(tblImageResults);
 		contentPane.setLayout(gl_contentPane);
+		// Set up the Glass Pane.
+		busyPane = new BusyGlassPane(this);
+		setGlassPane(busyPane);
 	}
 
 	@Override
 	public void addActionListener(ActionListener listener) {
-		// TODO Auto-generated method stub
-		
+		listeners.add(ActionListener.class, listener);
 	}
 
 	@Override
-	public void setImageSource(Traversable<ImageResult> source) {
-		// TODO Auto-generated method stub
-		
+	public synchronized void setImageSource(Traversable<ImageResult> source) {
+		imageSource = Objects.requireNonNull(source).traverser();
+		imageSourceTraversable = source;
+		clear();
+		nextPage(false);
 	}
 
 	@Override
 	public void clear() {
-		// TODO Auto-generated method stub
-		
+		imageResultsModel.setColumnCount(0);
 	}
 
 	@Override
 	public void setBusy(boolean busy) {
-		// TODO Auto-generated method stub
-		
+		busyPane.setVisible(busy);
+		if(busy) {
+			busyPane.start();
+		} else {
+			busyPane.stop();
+		}
 	}
 
 	@Override
 	public void addImageTransformer(ImageTransformer transformer) {
-		// TODO Auto-generated method stub
-		
+		imageTransformers.add(Objects.requireNonNull(transformer));
 	}
 
 	@Override
 	public void addImageTransformer(ImageTransformer transformer, int index) {
-		// TODO Auto-generated method stub
-		
+		imageTransformers.add(index, Objects.requireNonNull(transformer));
 	}
 
 	@Override
-	public int removeImageTransformer(ImageTransformer transformer) {
-		// TODO Auto-generated method stub
-		return 0;
+	public boolean removeImageTransformer(ImageTransformer transformer) {
+		return imageTransformers.remove(Objects.requireNonNull(transformer));
 	}
 
 	@Override
 	public ImageTransformer removeImageTransformer(int index) {
-		// TODO Auto-generated method stub
-		return null;
+		return imageTransformers.remove(index);
 	}
 
 	@Override
 	public void clearImageTransformers() {
-		// TODO Auto-generated method stub
-		
+		imageTransformers.clear();
 	}
 	
 	private String lastSearchFieldText = "";
@@ -419,8 +460,247 @@ public class DefaultView extends JFrame implements View {
 			txtSearchField.setBorder(BorderFactory.createCompoundBorder(new LineBorder(Color.LIGHT_GRAY, 1, false), 
 					BorderFactory.createEmptyBorder(0, 10, 0, 10)));
 			lastSearchFieldText = txtSearchField.getText();
-			txtSearchField.setText("  Search images...");
+			txtSearchField.setText("Search images...");
 		}
+	}
+	
+	private int calculateCellWidth() {
+		int imagesWidth = STD_COL_COUNT * STD_IMAGE_WIDTH;
+		int tableWidth = scrollPaneImageResults.getWidth();
+		int spacingWidth = tableWidth - imagesWidth;
+		int cellPadding = spacingWidth / STD_COL_COUNT;
+		int cellWidth = cellPadding + STD_IMAGE_WIDTH;
+		return cellWidth;
+	}
+	
+	private int calculateCellHeight() {
+		int imagesHeight = STD_ROW_COUNT * STD_IMAGE_WIDTH;
+		int tableHeight = scrollPaneImageResults.getHeight();
+		int spacingHeight = tableHeight - imagesHeight;
+		int cellPadding = spacingHeight / STD_ROW_COUNT;
+		int cellHeight = cellPadding + STD_IMAGE_HEIGHT;
+		return cellHeight;
+	}
+	
+	private synchronized boolean loadPage(int page) {
+		// Check if we have any more data which can be read from the source. 
+		boolean hasNext = imageSource.hasNext();
+		if(!hasNext) {
+			return false;
+		}System.out.println("Loading page: " + page);
+		isLoading = true;
+		// Allocate the next page of results.
+		final int colOffset = page * STD_COL_COUNT;
+		if(page >= pageCount) {
+			imageResultsModel.setColumnCount((page + 1) * STD_COL_COUNT);
+			System.out.println("Column count = " + imageResultsModel.getColumnCount());
+		}
+		int cellWidth = calculateCellWidth();
+		for(int i = 0; i < imageResultsModel.getColumnCount(); i++) {
+			tblImageResults.getColumnModel().getColumn(i).setPreferredWidth(cellWidth);
+		}
+		imageResultsModel.setRowCount(STD_ROW_COUNT);
+		tblImageResults.setRowHeight(calculateCellHeight());
+		int resultOffset = 0;
+		ImageLoadListener listener = new ImageLoadListener() {
+			final int UID = 10; // ID of 10 is only used by this method.
+			int row = 0; 
+			int col = 0;
+			@Override
+			public void onLoaded(ImageResult loaded) {
+				imageResultsModel.setValueAt(loaded, row, colOffset + col);
+				if(col >= STD_COL_COUNT - 1) {
+					row++;
+					col = 0;
+				} else {
+					col++;
+				}
+			}
+
+			@Override
+			public void onLoaded(ImageResult[] loaded) {
+				
+			}
+			
+			@Override
+			public int hashCode() {
+				return UID;
+			}
+			
+			@Override
+			public boolean equals(Object other) {
+				if(other instanceof ImageLoadListener) {
+					return hashCode() == other.hashCode();
+				} else {
+					return false;
+				}
+				
+			}
+			
+		};
+		LOADER.addImageLoadListener(listener);
+		// Populate next page of results.
+		try {
+			resultOffset = LOADER.loadImages(imageSourceTraversable, (STD_COL_COUNT * STD_ROW_COUNT));
+			hasNext = imageSource.hasNext();
+			// When we are finished loading the image results, rewind the traversable. 
+			for(int i = 0; i < resultOffset; i++) {
+				imageSource.previous();
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("an IOException occurred while loading images: " + e.getMessage(), e);
+		}
+		// Once we have the image results, we don't need the listener anymore.
+		LOADER.removeImageLoadListener(listener);
+		System.out.println("Finished loading page: " + page);
+		pageCount = (page > pageCount ? page : pageCount);
+		isLoading = false;
+		// Return whether or not we have exhausted the image source.
+		return hasNext;
+	}
+	
+	private synchronized void scrollPageToVisible(final int page, boolean animate) {
+		// Perform the scroll operation.
+		final Rectangle visibleRect = tblImageResults.getVisibleRect();
+		final Rectangle targetRect = new Rectangle(visibleRect);
+		if(animate) {
+			final int ANIM_FRAMERATE = 30;
+			final double ANIM_DURATION = 0.35;
+			ActionListener drawFrame = new ActionListener() {
+				private final int LIMIT = visibleRect.x + (page - currentPage) * visibleRect.width;
+				private final int ANIM_FRAME_DIFF = (int) (LIMIT / (ANIM_DURATION * ANIM_FRAMERATE));
+				private int current = ANIM_FRAME_DIFF;
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					if(current <= LIMIT) {
+						System.out.println(visibleRect.width + ", " + calculateCellWidth() * STD_COL_COUNT);
+						current = (current + ANIM_FRAME_DIFF > LIMIT ? LIMIT : current + ANIM_FRAME_DIFF);
+						Rectangle frameRect = new Rectangle(visibleRect);
+						frameRect.x += current;
+						tblImageResults.scrollRectToVisible(frameRect);
+						System.out.println("Visible: " + tblImageResults.getVisibleRect().x + " #" + current + ", " + LIMIT);
+					}
+					// After we have reached the limit, stop the animation.
+					if(current >= LIMIT) {
+						System.out.println("Stopping animation.");
+						animationTimer.stop();
+						new Thread(new Runnable() {
+
+							@Override
+							public void run() {
+								// Pre-load the next page of results.
+								loadPage(page + 1);
+							}
+							
+						}).start();
+					}
+				}
+				
+			};
+			animationTimer = new Timer(1000 / ANIM_FRAMERATE, drawFrame); // 30 FPS.
+			animationTimer.start();
+		} else {
+			targetRect.x += targetRect.width;
+			tblImageResults.scrollRectToVisible(targetRect);
+			// Pre-load the next page of results.
+			loadPage(page + 1);
+		}
+	}
+	
+	/**
+	 * Scrolls the view to the next page of image results and then returns whether there is an additional page of
+	 * content which can be read from the image source.
+	 * 
+	 * @return <code>true</code> if there is another valid page after this one, <code>false</code> otherwise.
+	 */
+	private synchronized void nextPage(boolean animate) {
+		scrollPageToVisible(currentPage + 1, animate);
+		currentPage++;
+	}
+	
+	private synchronized void previousPage() {
+		
+	}
+	
+	private class DummySingletonTraversable implements Traversable<ImageResult> {
+		
+		private final Traverser<ImageResult> SINGLETON;
+		
+		public DummySingletonTraversable(Traverser<ImageResult> singleton) {
+			SINGLETON = singleton;
+		}
+		
+		@Override
+		public Iterator<ImageResult> iterator() {
+			return SINGLETON;
+		}
+
+		@Override
+		public Traverser<ImageResult> traverser() {
+			return SINGLETON;
+		}
+		
+	}
+	
+	private class DummyTraverser implements Traverser<ImageResult> {
+		private java.util.Random rand = new java.util.Random();
+		private int currentIdx = 0;
+		private int maxIdx = rand.nextInt(500);
+		
+		@Override
+		public boolean hasNext() {
+			return currentIdx < maxIdx;
+		}
+
+		@Override
+		public ImageResult next() {
+			return new DummyImageResult(currentIdx++ + "");
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean hasPrevious() {
+			return currentIdx > 0;
+		}
+
+		@Override
+		public ImageResult previous() {
+			return new DummyImageResult(currentIdx-- + "");
+		}
+		
+		private class DummyImageResult implements ImageResult {
+			
+			private String title;
+			private BufferedImage image = null;
+			
+			public DummyImageResult(String articleTitle) {
+				title = articleTitle;
+			}
+			public void close() throws IOException {}
+			public BufferedImage getImage() {
+				if(image == null) {
+					try {
+						image = ImageIO.read(new URL(
+								"http://i285.photobucket.com/albums/ll45/M00NGRL67/Backgrounds/Green/CheckeredGreen.jpg"));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				return image;
+			}
+			public URL getImageURL() {return null;}
+			public String getArticleTitle() {
+				return title;
+			} 
+			public String getArticleAbstract() {return null;}
+			public URL getArticleURL() {return null;}
+			
+		}
+		
 	}
 	
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {
@@ -488,10 +768,10 @@ public class DefaultView extends JFrame implements View {
 				rendererComp.setHorizontalTextPosition(SwingConstants.CENTER);
 				rendererComp.setVerticalTextPosition(SwingConstants.BOTTOM);
 				// Set the foreground and background colors based on selection/rollover.
-				if(isSelected) {
+				if(value != null &&isSelected) {
 					rendererComp.setBackground(BG_SELECTED);
 					rendererComp.setForeground(FG_SELECTED);
-				} else if(isRollover) {
+				} else if(value != null && isRollover) {
 					rendererComp.setBackground(BG_ROLLOVER);
 					rendererComp.setForeground(FG_ROLLOVER);
 				} else {
