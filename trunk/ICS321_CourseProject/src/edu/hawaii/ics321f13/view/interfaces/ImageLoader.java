@@ -11,5 +11,7 @@ public interface ImageLoader extends Closeable {
 	int loadImages(Traversable<ImageResult> source, int loadCount) throws IOException;
 	
 	void addImageLoadListener(ImageLoadListener listener);
+	
+	void removeImageLoadListener(ImageLoadListener listener);
 
 }
