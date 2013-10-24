@@ -19,7 +19,7 @@ public interface View {
 	
 	void addImageTransformer(ImageTransformer transformer, int index);
 	
-	int removeImageTransformer(ImageTransformer transformer);
+	boolean removeImageTransformer(ImageTransformer transformer);
 	
 	ImageTransformer removeImageTransformer(int index);
 	
