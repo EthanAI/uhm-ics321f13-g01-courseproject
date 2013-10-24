@@ -15,7 +15,7 @@ public class MySQLDatabase implements Database {
 	private final Connection CONN;
 	private boolean isClosed = false;
 	
-	private final boolean DEBUG = true;
+	private final boolean DEBUG = true; // TODO Change to false when we get our databases up and running. 
 	
 	public MySQLDatabase(LoginInfo login, int port) throws SQLException {
 		String connectionURL = String.format("jdbc:mysql://localhost:%d/database", port);
