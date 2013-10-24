@@ -1,6 +1,8 @@
 package edu.hawaii.ics321f13.model.impl;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -95,6 +97,8 @@ public class DefaultSearchableModel implements SearchableModel {
 	
 	private class ImageResultTraverser implements Traverser<ImageResult> {
 		
+		private final String URL_PREFIX = ""; // TODO Replace with real prefix.
+		
 		private final ResultSet QUERY_RESULTS;
 		// Next retreival.
 		private boolean hasNext = false;
@@ -167,7 +171,19 @@ public class DefaultSearchableModel implements SearchableModel {
 		}
 		
 		private ImageResult parseResult() {
-			return null; // TODO implement ImageResult construction once schema is defined.
+			String imageURLString = null;
+			try {
+				String articleTitle = QUERY_RESULTS.getString(0);
+				imageURLString = URL_PREFIX + QUERY_RESULTS.getString(1);
+				URL imageURL = new URL(imageURLString);
+				return new DefaultImageResult(articleTitle, imageURL);
+			} catch (SQLException e) {
+				throw new RuntimeException(
+						"unable to parse query results as specified type (SQLException): " + e.getMessage(), e);
+			} catch (MalformedURLException e) {
+				throw new RuntimeException(
+						"'" + URL_PREFIX + imageURLString + "' is not a valid URL (MalformedURLException): " + e.getMessage(), e);
+			}
 		}
 		
 	}
