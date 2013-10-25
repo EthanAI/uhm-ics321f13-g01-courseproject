@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 
 import javax.imageio.ImageIO;
 
@@ -14,7 +15,7 @@ import org.jsoup.nodes.Element;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 
-public class DefaultImageResult implements ImageResult {
+public class DefaultImageResult implements ImageResult, Callable<BufferedImage> {
 	
 	private final URL IMAGE_URL;
 	private final URL ARTICLE_URL;
@@ -42,6 +43,15 @@ public class DefaultImageResult implements ImageResult {
 		imageCache = null;
 	}
 
+	/*
+	 * http://stackoverflow.com/questions/3141158/how-can-a-thread-return-a-value-after-finishing-its-job
+	 * http://www.vogella.com/articles/JavaConcurrency/article.html
+	 */
+	@Override
+	public BufferedImage call() throws Exception {
+		return getImage();
+	}
+	
 	@Override
 	public BufferedImage getImage() {
 		// TODO Ethan, this is where you would put the code which loads the image from the webpage (or delegate it to a method in this class...whatever way you wanna do it).
@@ -49,7 +59,7 @@ public class DefaultImageResult implements ImageResult {
 		String imageUrlString;
 		try {
 			URI page = new URI(getImageURL().toString());
-			Document doc = Jsoup.connect(page.toString()).get();
+			Document doc = Jsoup.connect(page.toString()).get(); //Jsoup closes its connection after it downloads the data
 			
 			Element image = doc.select("img").get(0); //0 will get the picture, but a little big
 			imageUrlString = image.absUrl("src");
@@ -90,5 +100,4 @@ public class DefaultImageResult implements ImageResult {
 	public URL getArticleURL() {
 		return ARTICLE_URL;
 	}
-
 }
