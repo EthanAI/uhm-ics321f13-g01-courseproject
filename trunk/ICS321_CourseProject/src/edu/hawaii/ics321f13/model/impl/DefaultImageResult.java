@@ -53,15 +53,12 @@ public class DefaultImageResult implements ImageResult, Callable<BufferedImage> 
 	}
 	
 	@Override
-	public BufferedImage getImage() {
-		// TODO Ethan, this is where you would put the code which loads the image from the webpage (or delegate it to a method in this class...whatever way you wanna do it).
-		// Just make sure you assign the imageCache variable to the BufferedImage that you get back from ImageIO and then return the imageCache.
+	public BufferedImage getImage() throws IOException{
 		String imageUrlString;
 		try {
-			URI page = new URI(getImageURL().toString());
-			Document doc = Jsoup.connect(page.toString()).get(); //Jsoup closes its connection after it downloads the data
+			Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
 			
-			Element image = doc.select("img").get(0); //0 will get the picture, but a little big
+			Element image = doc.select("img").first(); //.get(0) is the same as .first() possible to get other sizes of the image by venturing into .get(i) territory
 			imageUrlString = image.absUrl("src");
 			/*  
 			//requires function passed image id name, not image url can get smaller images. Maybe nice for V2.0 of the project
@@ -75,7 +72,7 @@ public class DefaultImageResult implements ImageResult, Callable<BufferedImage> 
 			//System.out.println(imageUrlText);
 			imageCache = ImageIO.read(new URL(imageUrlString));
 		} 
-		catch (Exception e) {
+		catch (IndexOutOfBoundsException e) { //will not be triggered while using doc.select("img").first(); implementation. If changed, should discuss how to handle exceptions
 			e.printStackTrace();
 		}
 		return imageCache;
