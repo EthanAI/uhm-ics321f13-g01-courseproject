@@ -15,7 +15,7 @@ import org.jsoup.nodes.Element;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 
-public class DefaultImageResult implements ImageResult, Callable<BufferedImage> {
+public class DefaultImageResult implements ImageResult {
 	
 	private final URL IMAGE_URL;
 	private final URL ARTICLE_URL;
@@ -42,28 +42,21 @@ public class DefaultImageResult implements ImageResult, Callable<BufferedImage> 
 		// but keep the metadata alive. 
 		imageCache = null;
 	}
-
-	/*
-	 * http://stackoverflow.com/questions/3141158/how-can-a-thread-return-a-value-after-finishing-its-job
-	 * http://www.vogella.com/articles/JavaConcurrency/article.html
-	 */
-	@Override
-	public BufferedImage call() throws Exception {
-		return getImage();
-	}
 	
 	@Override
-	public BufferedImage getImage() throws IOException{
+	public BufferedImage getImage() throws IOException { //throw IOExceptions for controller to handle
+		final int INDEX_MEDIUM_IMAGE = 0;
 		String imageUrlString;
+		System.out.println("Getting Image");
 		try {
 			Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
 			
-			Element image = doc.select("img").first(); //.get(0) is the same as .first() possible to get other sizes of the image by venturing into .get(i) territory
+			Element image = doc.select("img").get(INDEX_MEDIUM_IMAGE); //possible to get other sizes of the image by venturing into .get(i) territory
 			imageUrlString = image.absUrl("src");
 			/*  
 			//requires function passed image id name, not image url can get smaller images. Maybe nice for V2.0 of the project
 			imageUrlText = image.absUrl("src");
-			for(int i = 1; !imageUrlText.contains(imageName) && i < doc.select("img").size(); i++) { //check we didn't run out of links
+			for(int i = INDEX_MEDIUM_IMAGE + 1; !imageUrlText.contains(imageName) && i < doc.select("img").size(); i++) { //check we didn't run out of links
 				image = doc.select("img").get(i);
 				imageUrlText = image.absUrl("src");
 				//System.out.println("Replacing image selection: " + imageUrlText);
@@ -73,7 +66,7 @@ public class DefaultImageResult implements ImageResult, Callable<BufferedImage> 
 			imageCache = ImageIO.read(new URL(imageUrlString));
 		} 
 		catch (IndexOutOfBoundsException e) { //will not be triggered while using doc.select("img").first(); implementation. If changed, should discuss how to handle exceptions
-			e.printStackTrace();
+			throw new IOException(e);
 		}
 		return imageCache;
 	}

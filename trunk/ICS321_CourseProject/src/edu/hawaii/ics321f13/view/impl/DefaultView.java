@@ -785,7 +785,12 @@ public class DefaultView extends JFrame implements View {
 					rendererComp.setIcon(new ImageIcon((Image) value));
 					rendererComp.setText(null);
 				} else if(value instanceof ImageResult) {
-					rendererComp.setIcon(new ImageIcon(((ImageResult) value).getImage()));
+					try {
+						rendererComp.setIcon(new ImageIcon(((ImageResult) value).getImage()));
+					} catch (IOException e) { //temporary just so I can compile and study the code - ES
+						// TODO Auto-generated catch block
+						throw new RuntimeException("an IOException occurred while loading images: " + e.getMessage(), e);
+					}
 					rendererComp.setText(((ImageResult) value).getArticleTitle()); // TODO Truncate text if it is too long.
 				} else {
 					rendererComp.setIcon(null);
