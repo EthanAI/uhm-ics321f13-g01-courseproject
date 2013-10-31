@@ -33,7 +33,7 @@ public class DefaultViewFactory implements ViewFactory {
 
 					@Override
 					public String getUserName() {
-						return "";
+						return "root"; //TODO currently hardcoded to root. Will work for now
 					}
 
 					@Override
