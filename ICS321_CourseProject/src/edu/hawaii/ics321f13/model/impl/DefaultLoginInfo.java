@@ -13,6 +13,12 @@ public class DefaultLoginInfo implements LoginInfo {
 	
 	private boolean isClosed = false;
 	
+	/**
+	 * Constructor for the <code>DefaultLoginInfo</class>
+	 * 
+	 * @param username - String holding the login ID for the database
+	 * @param password - char[] holding the password for the database
+	 */
 	public DefaultLoginInfo(String username, char[] password) {
 		USERNAME = Objects.requireNonNull(username);
 		PASSWORD = Objects.requireNonNull(password);
@@ -26,6 +32,9 @@ public class DefaultLoginInfo implements LoginInfo {
 		}
 	}
 
+	/**
+	 * Accessor for the <code>USERNAME</code>
+	 */
 	@Override
 	public String getUserName() {
 		if(isClosed) {
@@ -34,6 +43,9 @@ public class DefaultLoginInfo implements LoginInfo {
 		return USERNAME;
 	}
 
+	/**
+	 * Accessor for the <code>PASSWORD</code>
+	 */
 	@Override
 	public char[] getPassword() {
 		if(isClosed) {

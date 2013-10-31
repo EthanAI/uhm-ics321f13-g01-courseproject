@@ -19,6 +19,7 @@ import edu.hawaii.ics321f13.model.interfaces.Traverser;
 public class DefaultSearchableModel implements SearchableModel {
 	
 	private final Database DATABASE;
+	private String TITLE_IMAGE_TABLE  = "test_table_1"; //probably this needs to get moved into MySQLDatabase instead
 	
 	private boolean isClosed = false;
 	
@@ -39,6 +40,15 @@ public class DefaultSearchableModel implements SearchableModel {
 		} // Otherwise do nothing to maintain idempotence.
 	}
 
+	/**
+	 * Searches the database for the images related to the supplied key String
+	 * 
+	 * @param key - String containing the search temr
+	 * @param resultType - Class<?> //TODO
+	 * @param constraint - ResultConstraint //TODO
+	 * 
+	 * @return A <code>Traversable</code> containing the <code>ImageResult</code>
+	 */
 	@Override
 	public Traversable<ImageResult> search(String key, Class<?> resultType,
 			ResultConstraint constraint) {
@@ -56,13 +66,21 @@ public class DefaultSearchableModel implements SearchableModel {
 		}
 		// Check if we know how to handle this query.
 		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
-			final String SQL = ""; // TODO implement once schema is defined.
+			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
+								"WHERE title = '" + key + "'"; 
 			return executeQuery(SQL);
 		} else {
 			throw new UnsupportedOperationException("unsupported query result type/constraint combination");
 		}
 	}
 	
+	/**
+	 * Executes the SQL command supplied upon the database
+	 * 
+	 * @param sql - String containing the text of the SQL query. In the same form as a typical SQL line of code.
+	 * 
+	 * @return <code>Traversable</code> containing the <code>ImageResult</code> 
+	 */
 	private Traversable<ImageResult> executeQuery(String sql) {
 		try {
 			ResultSet results = DATABASE.executeQuery(sql);
@@ -75,6 +93,10 @@ public class DefaultSearchableModel implements SearchableModel {
 		
 	}
 	
+	/**
+	 * 
+	 * TODO
+	 */
 	private class SingletonTraversable<E> implements Traversable<E> {
 		
 		private final Traverser<E> SINGLETON;
@@ -95,6 +117,9 @@ public class DefaultSearchableModel implements SearchableModel {
 		
 	}
 	
+	/*
+	 * TODO
+	 */
 	private class ImageResultTraverser implements Traverser<ImageResult> {
 		
 		private final String URL_PREFIX = ""; // TODO Replace with real prefix.

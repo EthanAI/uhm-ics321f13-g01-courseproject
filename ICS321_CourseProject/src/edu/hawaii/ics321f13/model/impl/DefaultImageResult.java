@@ -24,10 +24,24 @@ public class DefaultImageResult implements ImageResult {
 	
 	private BufferedImage imageCache = null;
 	
+	/**
+	 * Simplified constructor for DefaultImageResult class
+	 * 
+	 * @param articleTitle
+	 * @param imageURL
+	 */
 	public DefaultImageResult(String articleTitle, URL imageURL) {
 		this(articleTitle, imageURL, null, null);
 	}
 	
+	/**
+	 * Constructor for DefaultImageResult class where articleURL and article Abstract are supplied
+	 * 
+	 * @param articleTitle
+	 * @param imageURL
+	 * @param articleURL
+	 * @param articleAbstract
+	 */
 	public DefaultImageResult(String articleTitle, URL imageURL, URL articleURL, String articleAbstract) {
 		ARTICLE_TITLE = Objects.requireNonNull(articleTitle);
 		IMAGE_URL = Objects.requireNonNull(imageURL);
@@ -43,12 +57,18 @@ public class DefaultImageResult implements ImageResult {
 		imageCache = null;
 	}
 	
+	/*
+	 * Downloads and returns the relevant image from the URL of the wikicommons webpage we found using the user's search term <code>IMAGE_URL</code>. 
+	 * Operates on the  
+	 * 
+	 * @return A <code>BufferedImage</code> containing the image.
+	 */
 	@Override
 	public BufferedImage getImage() throws IOException { //throw IOExceptions for controller to handle
 		final int INDEX_MEDIUM_IMAGE = 0;
 		String imageUrlString;
 		System.out.println("Getting Image");
-		try {
+		try { 
 			Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
 			
 			Element image = doc.select("img").get(INDEX_MEDIUM_IMAGE); //possible to get other sizes of the image by venturing into .get(i) territory
@@ -71,21 +91,34 @@ public class DefaultImageResult implements ImageResult {
 		return imageCache;
 	}
 
+	/**
+	 * Accessor method to get the URL of the wikicommons page containing the image we want <code>IMAGE_URL</code>
+	 */
 	@Override
 	public URL getImageURL() {
 		return IMAGE_URL;
 	}
 
+	/**
+	 * Accessor to get the title of the article <code>ARTICLE_TITLE</code>
+	 */
 	@Override
 	public String getArticleTitle() {
 		return ARTICLE_TITLE;
 	}
 
+	/**
+	 * Accessor to get the abstract of the article <code>ARTICLE_ABSTRACT</code>
+	 */
 	@Override
 	public String getArticleAbstract() {
 		return ARTICLE_ABSTRACT;
 	}
 
+	/**
+	 * Accessor to get the URL where the URL of the article where we are finding a picture <code>ARTICLE_URL</code>
+	 */
+	//TODO arent we going to have multiple URLS from one search term, and multiple images from one Article?
 	@Override
 	public URL getArticleURL() {
 		return ARTICLE_URL;
