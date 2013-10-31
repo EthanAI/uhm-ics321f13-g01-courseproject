@@ -15,14 +15,25 @@ import java.awt.Color;
 import java.awt.SystemColor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.concurrent.Semaphore;
 
 import javax.swing.JButton;
 import javax.swing.JTextField;
 
 public class LoginDialog extends JDialog implements LoginPrompt {
-	private char[] password;
-	private String username;
+	
+	/** Serialization support */
+	private static final long serialVersionUID = 1L;
+	// Synchronization constants.
+	private final Semaphore LOCK = new Semaphore(1, true);
+	// UI components. 
+	private JPasswordField passwordField;
+	private JTextField usernameField;
+	
 	public LoginDialog() {
+		LOCK.acquireUninterruptibly(); // Acquire here to prevent other threads from acquiring after construction.
 		setTitle("Login Dialog");
 		getContentPane().setLayout(null);
 		
@@ -37,7 +48,6 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		usernameField.setBounds(139, 67, 285, 33);
 		getContentPane().add(usernameField);
 		usernameField.setColumns(10);
-		username = usernameField.getText();
 		
 		JLabel lblPasswordTitle = new JLabel("Password:");
 		lblPasswordTitle.setForeground(SystemColor.activeCaption);
@@ -48,7 +58,6 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		passwordField = new JPasswordField();
 		passwordField.setBounds(131, 129, 215, 27);
 		getContentPane().add(passwordField);
-		password = passwordField.getPassword();
 		
 		JButton button = new JButton("\u2794");
 		button.setActionCommand("Enter");
@@ -60,23 +69,41 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		button.setBounds(361, 119, 63, 44);
 		getContentPane().add(button);
 		
+		addWindowListener(new WindowAdapter() {
+			
+			@Override
+			public void windowClosing(WindowEvent e) {
+				// TODO Handle window closing.
+				// I don't have time to finish writing this. I have to study for my midterm but we need to do two things here:
+				// 1) Indicate that the window was closed and no credentials were entered.
+				// 2) Release the lock. 
+			}
+			
+		});
+		
 		button.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				getLoginInfo();
+				setVisible(false);
+				LOCK.release();
 			}
 		});
+		// Since the LoginPrompt is abstracted from any visual representation, the caller is freed from the 
+		// responsibility of managing this view's visibility explicitly. That implies that the contract to which this
+		// view must adhere is that it will manage its own visiblity in some logical manner that supports the
+		// functionallity required by the LoginPrompt interface. 
+		// So, in short, we need to make the dialog visible here and hide it when the user submits the credentials.
+		setVisible(true);
 	}
-
-	/** Serialization support */
-	private static final long serialVersionUID = 1L;
-	private JPasswordField passwordField;
-	private JTextField usernameField;
 	
 	@Override
-	//not quite sure if i did this right. I also don't know how i would test it sorry kyle
 	public LoginInfo getLoginInfo() {
-		DefaultLoginInfo log = new DefaultLoginInfo(username, password);
-		return log;
+		if(isVisible()) {
+			// Ignore interrupted exceptions because it is unacceptable for this method to return spuriously(randomly).
+			// The contract of this method is that it will only return after the user has clicked "OK", otherwise
+			// the thread is disabled for thread-scheduling purposes.
+			LOCK.acquireUninterruptibly();
+		}
+		return new DefaultLoginInfo(usernameField.getText(), passwordField.getPassword());
 	}
 }
