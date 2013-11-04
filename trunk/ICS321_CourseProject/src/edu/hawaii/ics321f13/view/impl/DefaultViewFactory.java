@@ -9,13 +9,20 @@ import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
 
 public class DefaultViewFactory implements ViewFactory {
 
+	/*
+	 * Constructor uses the <code>SynchronousImageLoader</code> to generate the <code>DefaultView</code>
+	 */
 	@Override
 	public View createView() {
 		DefaultView view = new DefaultView(new SynchronousImageLoader());
 		view.setVisible(true);
 		return view;
 	}
-
+	
+	/*
+	 * Creates the <code>LoginPrompt</code>
+	 * @return <code>LoginPrompt</code>
+	 */
 	@Override
 	public LoginPrompt createLoginPrompt() {
 		// TODO Debug: placeholder dummy code.

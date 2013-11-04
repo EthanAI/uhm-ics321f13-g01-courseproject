@@ -220,7 +220,7 @@ public class DefaultView extends JFrame implements View {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				previousPage();
+				previousPage(false); //TODO confirm this change is sane
 			}
 			
 		});
@@ -394,11 +394,19 @@ public class DefaultView extends JFrame implements View {
 		setGlassPane(busyPane);
 	}
 
+	/*
+	 * Adds the <code>ActionListener</code>
+	 */
 	@Override
 	public void addActionListener(ActionListener listener) {
 		listeners.add(ActionListener.class, listener);
 	}
-
+	
+	/*
+	 * sets the image source.
+	 * 
+	 * @param source - a <code>Traversable</code> list of <code>ImageResult</code>s
+	 */
 	@Override
 	public synchronized void setImageSource(Traversable<ImageResult> source) {
 		imageSource = Objects.requireNonNull(source).traverser();
@@ -407,11 +415,19 @@ public class DefaultView extends JFrame implements View {
 		nextPage(false);
 	}
 
+	/*
+	 * Removes all the images from the view
+	 */
 	@Override
 	public void clear() {
 		imageResultsModel.setColumnCount(0);
 	}
 
+	/*
+	 * Sets whether or not the view should display the busy pane
+	 * 
+	 * @param busy - boolean indicating if the busy pane should be displayed
+	 */
 	@Override
 	public void setBusy(boolean busy) {
 		busyPane.setVisible(busy);
@@ -422,26 +438,50 @@ public class DefaultView extends JFrame implements View {
 		}
 	}
 
+	/*
+	 * Adds the <code>ImageTransformer</code>
+	 * 
+	 * @param transformer - The <code>ImageTransformer</code> to be added
+	 */
 	@Override
 	public void addImageTransformer(ImageTransformer transformer) {
 		imageTransformers.add(Objects.requireNonNull(transformer));
 	}
 
+	/*
+	 * Adds the <code>ImageTransformer</code> at a particular index
+	 * 
+	 * @param transformer - The <code>ImageTransformer</code> to be added
+	 * @param index - int of the index where the <code>ImageTransformer</code> should be added
+	 */
 	@Override
 	public void addImageTransformer(ImageTransformer transformer, int index) {
 		imageTransformers.add(index, Objects.requireNonNull(transformer));
 	}
 
+	/*
+	 * Removes a <code>ImageTransformer</code> by object reference
+	 * 
+	 * @param transformer - The <code>ImageTransformer</code> to be removed
+	 */
 	@Override
 	public boolean removeImageTransformer(ImageTransformer transformer) {
 		return imageTransformers.remove(Objects.requireNonNull(transformer));
 	}
 
+	/*
+	 * Removes a <code>ImageTransformer</code> by index reference
+	 * 
+	 * @param index - The index of the <code>ImageTransformer</code> to be removed
+	 */
 	@Override
 	public ImageTransformer removeImageTransformer(int index) {
 		return imageTransformers.remove(index);
 	}
 
+	/*
+	 * Removes all the <code>ImageTransformer</code>s
+	 */
 	@Override
 	public void clearImageTransformers() {
 		imageTransformers.clear();
@@ -464,6 +504,9 @@ public class DefaultView extends JFrame implements View {
 		}
 	}
 	
+	/*
+	 * Calculates the correct width of each cell using the attributes of the <code>View</code>
+	 */
 	private int calculateCellWidth() {
 		int imagesWidth = STD_COL_COUNT * STD_IMAGE_WIDTH;
 		int tableWidth = scrollPaneImageResults.getWidth();
@@ -473,6 +516,9 @@ public class DefaultView extends JFrame implements View {
 		return cellWidth;
 	}
 	
+	/*
+	 * Calculates the correct height of each cell using the attributes of the <code>View</code>
+	 */
 	private int calculateCellHeight() {
 		int imagesHeight = STD_ROW_COUNT * STD_IMAGE_WIDTH;
 		int tableHeight = scrollPaneImageResults.getHeight();
@@ -482,6 +528,10 @@ public class DefaultView extends JFrame implements View {
 		return cellHeight;
 	}
 	
+	/*
+	 * TODO I dont recall the structure of functions within a function like this. Also don't know about synchronized keyword yet 
+	 * and no internet on the plane
+	 */
 	private synchronized boolean loadPage(int page) {
 		// Check if we have any more data which can be read from the source. 
 		boolean hasNext = imageSource.hasNext();
@@ -559,6 +609,10 @@ public class DefaultView extends JFrame implements View {
 		return hasNext;
 	}
 	
+	/*
+	 * TODO I dont recall the structure of functions within a function like this. Also don't know about synchronized keyword yet 
+	 * and no internet on the plane
+	 */
 	private synchronized void scrollPageToVisible(final int page, boolean animate) {
 		// Perform the scroll operation.
 		final Rectangle visibleRect = tblImageResults.getVisibleRect();
@@ -613,15 +667,26 @@ public class DefaultView extends JFrame implements View {
 	 * 
 	 * @return <code>true</code> if there is another valid page after this one, <code>false</code> otherwise.
 	 */
-	private synchronized void nextPage(boolean animate) {
+	private synchronized void nextPage(boolean animate) { //TODO void function. Described with @return. Seems mismatch
 		scrollPageToVisible(currentPage + 1, animate);
 		currentPage++;
 	}
 	
-	private synchronized void previousPage() {
-		
+	/**
+	 * Scrolls the view to the previous page of image results and then returns whether there is an previous page of
+	 * content which can be read from the image source.
+	 * 
+	 * @return <code>true</code> if there is another valid page before this one, <code>false</code> otherwise.
+	 */
+	private synchronized void previousPage(boolean animate) { //TODO void function. Described with @return. Seems mismatch
+		//TODO looks like this should not be empty and should be a mirror of nextPage()
+		scrollPageToVisible(currentPage - 1, animate);
+		currentPage--;
 	}
 	
+	/*
+	 * TODO
+	 */
 	private class DummySingletonTraversable implements Traversable<ImageResult> {
 		
 		private final Traverser<ImageResult> SINGLETON;
@@ -642,36 +707,62 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
+	/*
+	 * TODO
+	 */
 	private class DummyTraverser implements Traverser<ImageResult> {
 		private java.util.Random rand = new java.util.Random();
 		private int currentIdx = 0;
 		private int maxIdx = rand.nextInt(500);
 		
+		/*
+		 * Returns if there is an item after this one
+		 * @return boolean describing if there are any more elements 
+		 */
 		@Override
 		public boolean hasNext() {
 			return currentIdx < maxIdx;
 		}
-
+		
+		/*
+		 * Moves the traverser to the next element and returns it
+		 * @return <code>ImageResult</code> - The next item in the <code>Traverser</code>
+		 */
 		@Override
 		public ImageResult next() {
 			return new DummyImageResult(currentIdx++ + "");
 		}
 
+		/*
+		 * TODO
+		 * Unsupported function
+		 */
 		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
 
+		/*
+		 * Returns if there is an item before this one
+		 * @return boolean describing if there are any more elements before this one
+		 */
 		@Override
 		public boolean hasPrevious() {
 			return currentIdx > 0;
 		}
 
+		/*
+		 * Moves the traverser to the previous element and returns it
+		 * @return <code>ImageResult</code> - The previous item in the <code>Traverser</code>
+		 */
 		@Override
 		public ImageResult previous() {
 			return new DummyImageResult(currentIdx-- + "");
 		}
 		
+		/*
+		 * TODO
+		 */
 		private class DummyImageResult implements ImageResult {
 			
 			private String title;
@@ -703,6 +794,9 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
+	/*
+	 * TODO
+	 */
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {
 		
 		// Background color values.
@@ -741,6 +835,9 @@ public class DefaultView extends JFrame implements View {
 			
 		}
 		
+		/*
+		 * TODO
+		 */
 		public Component getTableCellRendererComponent(
 				JTable table, 
 				Object value, 
@@ -803,6 +900,9 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
+	/*
+	 * TODO
+	 */
 	private class MetroButton extends JLabel implements ButtonModel {
 		
 		protected final Color UNSELECTED_COLOR;
@@ -925,6 +1025,10 @@ public class DefaultView extends JFrame implements View {
 			});
 		}
 
+		/*
+		 * Returns the selected object
+		 * @return <code>Object</code> that is currently selected or null if none
+		 */
 		@Override
 		public Object[] getSelectedObjects() {
 			if(isPressed) {

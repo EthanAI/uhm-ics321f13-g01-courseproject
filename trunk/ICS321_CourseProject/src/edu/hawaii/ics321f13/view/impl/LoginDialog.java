@@ -32,6 +32,10 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	private JPasswordField passwordField;
 	private JTextField usernameField;
 	
+	
+	/*
+	 * Constructor for the <code>LoginDialog</code>
+	 */
 	public LoginDialog() {
 		LOCK.acquireUninterruptibly(); // Acquire here to prevent other threads from acquiring after construction.
 		setTitle("Login Dialog");
@@ -96,6 +100,10 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		setVisible(true);
 	}
 	
+	/*
+	 * Accessor that returns the <code>LoginInfo</code>
+	 * @return <code>LoginInfo</code>
+	 */
 	@Override
 	public LoginInfo getLoginInfo() {
 		if(isVisible()) {
