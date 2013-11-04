@@ -14,8 +14,7 @@ public class AsyncImageLoader extends AbstractImageLoader {
 	}
 
 	@Override
-	public int loadImages(Traversable<ImageResult> source, int loadCount)
-			throws IOException {
+	public int loadImages(Traversable<ImageResult> source, int loadCount) {
 		// TODO Auto-generated method stub
 		return 0;
 	}

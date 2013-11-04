@@ -8,6 +8,7 @@ import java.util.Objects;
 
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
 import edu.hawaii.ics321f13.model.interfaces.DataModelFactory;
+import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.LoginInfo;
 import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
@@ -102,7 +103,7 @@ public class DefaultController implements Controller {
 	 */
 	@Override
 	public void onQuery(String searchTerm) {
-		MODEL.search(searchTerm, BufferedImage.class, ResultConstraint.CONTAINS);
+		MODEL.search(searchTerm, ImageResult.class, ResultConstraint.CONTAINS);
 	}
 
 	@Override

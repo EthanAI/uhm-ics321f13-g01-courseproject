@@ -8,7 +8,7 @@ import edu.hawaii.ics321f13.model.interfaces.Traversable;
 
 public interface ImageLoader extends Closeable {
 	
-	int loadImages(Traversable<ImageResult> source, int loadCount) throws IOException;
+	int loadImages(Traversable<ImageResult> source, int loadCount);
 	
 	void addImageLoadListener(ImageLoadListener listener);
 	

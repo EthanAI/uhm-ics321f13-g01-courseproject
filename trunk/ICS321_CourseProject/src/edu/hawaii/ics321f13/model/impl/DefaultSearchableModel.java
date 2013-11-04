@@ -243,6 +243,19 @@ public class DefaultSearchableModel implements SearchableModel {
 						"'" + URL_PREFIX + imageURLString + "' is not a valid URL (MalformedURLException): " + e.getMessage(), e);
 			}
 		}
+
+		@Override
+		public int index() {
+			try {
+				// Must subtract 1 to convert from a one-based row index to a zero-based index and to support the
+				// requirement that a value of -1 is returned before next() has ever been called on the current
+				// ResultSet object.
+				return QUERY_RESULTS.getRow() - 1;
+			} catch (SQLException e) {
+				throw new RuntimeException("SQLException occurred while retrieving row index: " 
+						+ e.getMessage(), e);
+			}
+		}
 		
 	}
 

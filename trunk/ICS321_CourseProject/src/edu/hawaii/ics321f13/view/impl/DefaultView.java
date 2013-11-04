@@ -16,6 +16,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
@@ -27,6 +28,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.UIManager;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.ListSelectionModel;
 import javax.swing.JScrollPane;
@@ -57,13 +59,17 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
@@ -76,6 +82,7 @@ import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
+import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
 import edu.hawaii.ics321f13.view.interfaces.View;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
@@ -99,10 +106,9 @@ public class DefaultView extends JFrame implements View {
 	private final int STD_IMAGE_WIDTH = 90;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
+	private final String ERROR_ICON_KEY = "OptionPane.errorIcon";
 	// View variables.
-	private int currentPageCursorPos = 0;
-	private int currentPage = 0;
-	private int pageCount = 0;
+	private ResultsPage<ImageResult> currentPage = null;
 	// View components. 
 	private Point lastRolloverCell = null;
 	private JPanel contentPane;
@@ -110,6 +116,9 @@ public class DefaultView extends JFrame implements View {
 	private JTextField txtSearchField;
 	private DefaultTableModel imageResultsModel = new DefaultTableModel();
 	private JScrollPane scrollPaneImageResults = new JScrollPane();
+	private MetroButton btnNext;
+	private MetroButton btnPrevious;
+	private MetroButton btnSearch;
 
 	/**
 	 * Create the frame.
@@ -196,43 +205,90 @@ public class DefaultView extends JFrame implements View {
 		
 		// To use GUI editor, comment out this block.
 		// START BLOCK
-		MetroButton btnSearch = new MetroButton("\u2794", new Font("Segoe UI Symbol", Font.PLAIN, 70), 
+		btnSearch = new MetroButton("\u2794", new Font("Segoe UI Symbol", Font.PLAIN, 70), 
 				new Color(210, 210, 210), new Color(160, 160, 160), new Color(185, 185, 185));
 		btnSearch.setBackground(Color.WHITE);
 		btnSearch.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				// TODO Remove, debug harness.
 				clear();
-				boolean hasNext = loadPage(0);
-				if(hasNext) {
-					loadPage(1);
+				// Searching for an empty string should yield an empty result set.
+				if(!txtSearchField.getText().trim().isEmpty()) {
+					fireActionPerformed(ViewEventType.QUERY.getID(), txtSearchField.getText().trim());
 				}
 			}
 			
 		});
 		
-		MetroButton btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
+		btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnPrevious.setBackground(Color.WHITE);
 		btnPrevious.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				previousPage(false); //TODO confirm this change is sane
+				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
+				if(currentPage.hasPreviousPage()) {
+					currentPage = currentPage.previousPage();
+					btnNext.setEnabled(currentPage.hasNextPage());
+					btnPrevious.setEnabled(currentPage.hasPreviousPage());
+					currentPage.setActive(new Runnable() {
+
+						@Override
+						public void run() {
+							try {
+								PREV_PAGE.close();
+							} catch (IOException e) {
+								// Should never happen because default close implementation does not throw exception.
+								// This exception is carried over from java.io.Closeable interface.
+								throw new RuntimeException(
+										"an error occurred while closing results page: " 
+												+ (e.getMessage() == null ? "<none>" : e.getMessage()), e);
+							}
+						}
+						
+					});
+				} else {
+					// Beep when the user tries to go past valid page range.
+					Toolkit.getDefaultToolkit().beep();
+				}
 			}
 			
 		});
 		
-		MetroButton btnNext = new MetroButton("\u2771", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
+		btnNext = new MetroButton("\u2771", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnNext.setBackground(Color.WHITE);
 		btnNext.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				nextPage(false);
+				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
+				if(currentPage.hasNextPage()) {
+					currentPage = currentPage.nextPage();
+					btnNext.setEnabled(currentPage.hasNextPage());
+					btnPrevious.setEnabled(currentPage.hasPreviousPage());
+					currentPage.setActive(new Runnable() {
+
+						@Override
+						public void run() {
+							try {
+								PREV_PAGE.close();
+							} catch (IOException e) {
+								// Should never happen because default close implementation does not throw exception.
+								// This exception is carried over from java.io.Closeable interface.
+								throw new RuntimeException(
+										"an error occurred while closing results page: " 
+												+ (e.getMessage() == null ? "<none>" : e.getMessage()), e);
+							}
+						}
+						
+					});
+				} else {
+					// Beep when the user tries to go past valid page range.
+					Toolkit.getDefaultToolkit().beep();
+				}
 			}
 			
 		});
@@ -379,9 +435,6 @@ public class DefaultView extends JFrame implements View {
 				new Color(220, 220, 250), new Color(200, 200, 200), new Color(180, 180, 180), new Color(160, 160, 160), 
 				new Font("Segoe UI Light", Font.PLAIN, 15), new Font("Segoe UI Light", Font.PLAIN, 15), 
 				SwingConstants.CENTER, SwingConstants.CENTER));
-		// TODO Remove: test harness.
-		imageSource = new DummyTraverser();
-		imageSourceTraversable = new DummySingletonTraversable(imageSource);
 		// Initial configuration of the data model.
 		imageResultsModel.setColumnCount(STD_COL_COUNT);
 		imageResultsModel.setRowCount(STD_ROW_COUNT);
@@ -389,45 +442,41 @@ public class DefaultView extends JFrame implements View {
 		
 		scrollPaneImageResults.setViewportView(tblImageResults);
 		contentPane.setLayout(gl_contentPane);
+		// Handle window closing event.
+		addWindowListener(new WindowAdapter() {
+			
+			@Override
+			public void windowClosing(WindowEvent e) {
+				fireActionPerformed(ViewEventType.CLOSE.getID(), "CLOSE");
+			}
+			
+		});
+		
 		// Set up the Glass Pane.
 		busyPane = new BusyGlassPane(this);
 		setGlassPane(busyPane);
 	}
 
-	/*
-	 * Adds the <code>ActionListener</code>
-	 */
 	@Override
 	public void addActionListener(ActionListener listener) {
 		listeners.add(ActionListener.class, listener);
 	}
-	
-	/*
-	 * sets the image source.
-	 * 
-	 * @param source - a <code>Traversable</code> list of <code>ImageResult</code>s
-	 */
+
 	@Override
 	public synchronized void setImageSource(Traversable<ImageResult> source) {
 		imageSource = Objects.requireNonNull(source).traverser();
 		imageSourceTraversable = source;
 		clear();
-		nextPage(false);
+		currentPage = new DefaultResultsPage(
+				0, STD_ROW_COUNT, STD_COL_COUNT, imageSourceTraversable, LOADER, tblImageResults);
+		currentPage.setActive();
 	}
 
-	/*
-	 * Removes all the images from the view
-	 */
 	@Override
 	public void clear() {
 		imageResultsModel.setColumnCount(0);
 	}
 
-	/*
-	 * Sets whether or not the view should display the busy pane
-	 * 
-	 * @param busy - boolean indicating if the busy pane should be displayed
-	 */
 	@Override
 	public void setBusy(boolean busy) {
 		busyPane.setVisible(busy);
@@ -438,53 +487,39 @@ public class DefaultView extends JFrame implements View {
 		}
 	}
 
-	/*
-	 * Adds the <code>ImageTransformer</code>
-	 * 
-	 * @param transformer - The <code>ImageTransformer</code> to be added
-	 */
 	@Override
 	public void addImageTransformer(ImageTransformer transformer) {
 		imageTransformers.add(Objects.requireNonNull(transformer));
 	}
 
-	/*
-	 * Adds the <code>ImageTransformer</code> at a particular index
-	 * 
-	 * @param transformer - The <code>ImageTransformer</code> to be added
-	 * @param index - int of the index where the <code>ImageTransformer</code> should be added
-	 */
 	@Override
 	public void addImageTransformer(ImageTransformer transformer, int index) {
 		imageTransformers.add(index, Objects.requireNonNull(transformer));
 	}
 
-	/*
-	 * Removes a <code>ImageTransformer</code> by object reference
-	 * 
-	 * @param transformer - The <code>ImageTransformer</code> to be removed
-	 */
 	@Override
 	public boolean removeImageTransformer(ImageTransformer transformer) {
 		return imageTransformers.remove(Objects.requireNonNull(transformer));
 	}
 
-	/*
-	 * Removes a <code>ImageTransformer</code> by index reference
-	 * 
-	 * @param index - The index of the <code>ImageTransformer</code> to be removed
-	 */
 	@Override
 	public ImageTransformer removeImageTransformer(int index) {
 		return imageTransformers.remove(index);
 	}
 
-	/*
-	 * Removes all the <code>ImageTransformer</code>s
-	 */
 	@Override
 	public void clearImageTransformers() {
 		imageTransformers.clear();
+	}
+	
+	private void fireActionPerformed(int id, String command) {
+		ActionListener[] actionListeners = listeners.getListeners(ActionListener.class);
+		ActionEvent event = new ActionEvent(this, id, command);
+		for(ActionListener listener : actionListeners) {
+			if(listener != null) {
+				listener.actionPerformed(event);
+			}
+		}
 	}
 	
 	private String lastSearchFieldText = "";
@@ -504,189 +539,6 @@ public class DefaultView extends JFrame implements View {
 		}
 	}
 	
-	/*
-	 * Calculates the correct width of each cell using the attributes of the <code>View</code>
-	 */
-	private int calculateCellWidth() {
-		int imagesWidth = STD_COL_COUNT * STD_IMAGE_WIDTH;
-		int tableWidth = scrollPaneImageResults.getWidth();
-		int spacingWidth = tableWidth - imagesWidth;
-		int cellPadding = spacingWidth / STD_COL_COUNT;
-		int cellWidth = cellPadding + STD_IMAGE_WIDTH;
-		return cellWidth;
-	}
-	
-	/*
-	 * Calculates the correct height of each cell using the attributes of the <code>View</code>
-	 */
-	private int calculateCellHeight() {
-		int imagesHeight = STD_ROW_COUNT * STD_IMAGE_WIDTH;
-		int tableHeight = scrollPaneImageResults.getHeight();
-		int spacingHeight = tableHeight - imagesHeight;
-		int cellPadding = spacingHeight / STD_ROW_COUNT;
-		int cellHeight = cellPadding + STD_IMAGE_HEIGHT;
-		return cellHeight;
-	}
-	
-	/*
-	 * TODO I dont recall the structure of functions within a function like this. Also don't know about synchronized keyword yet 
-	 * and no internet on the plane
-	 */
-	private synchronized boolean loadPage(int page) {
-		// Check if we have any more data which can be read from the source. 
-		boolean hasNext = imageSource.hasNext();
-		if(!hasNext) {
-			return false;
-		}System.out.println("Loading page: " + page);
-		isLoading = true;
-		// Allocate the next page of results.
-		final int colOffset = page * STD_COL_COUNT;
-		if(page >= pageCount) {
-			imageResultsModel.setColumnCount((page + 1) * STD_COL_COUNT);
-			System.out.println("Column count = " + imageResultsModel.getColumnCount());
-		}
-		int cellWidth = calculateCellWidth();
-		for(int i = 0; i < imageResultsModel.getColumnCount(); i++) {
-			tblImageResults.getColumnModel().getColumn(i).setPreferredWidth(cellWidth);
-		}
-		imageResultsModel.setRowCount(STD_ROW_COUNT);
-		tblImageResults.setRowHeight(calculateCellHeight());
-		int resultOffset = 0;
-		ImageLoadListener listener = new ImageLoadListener() {
-			final int UID = 10; // ID of 10 is only used by this method.
-			int row = 0; 
-			int col = 0;
-			@Override
-			public void onLoaded(ImageResult loaded) {
-				imageResultsModel.setValueAt(loaded, row, colOffset + col);
-				if(col >= STD_COL_COUNT - 1) {
-					row++;
-					col = 0;
-				} else {
-					col++;
-				}
-			}
-
-			@Override
-			public void onLoaded(ImageResult[] loaded) {
-				
-			}
-			
-			@Override
-			public int hashCode() {
-				return UID;
-			}
-			
-			@Override
-			public boolean equals(Object other) {
-				if(other instanceof ImageLoadListener) {
-					return hashCode() == other.hashCode();
-				} else {
-					return false;
-				}
-				
-			}
-			
-		};
-		LOADER.addImageLoadListener(listener);
-		// Populate next page of results.
-		try {
-			resultOffset = LOADER.loadImages(imageSourceTraversable, (STD_COL_COUNT * STD_ROW_COUNT));
-			hasNext = imageSource.hasNext();
-			// When we are finished loading the image results, rewind the traversable. 
-			for(int i = 0; i < resultOffset; i++) {
-				imageSource.previous();
-			}
-		} catch (IOException e) {
-			throw new RuntimeException("an IOException occurred while loading images: " + e.getMessage(), e);
-		}
-		// Once we have the image results, we don't need the listener anymore.
-		LOADER.removeImageLoadListener(listener);
-		System.out.println("Finished loading page: " + page);
-		pageCount = (page > pageCount ? page : pageCount);
-		isLoading = false;
-		// Return whether or not we have exhausted the image source.
-		return hasNext;
-	}
-	
-	/*
-	 * TODO I dont recall the structure of functions within a function like this. Also don't know about synchronized keyword yet 
-	 * and no internet on the plane
-	 */
-	private synchronized void scrollPageToVisible(final int page, boolean animate) {
-		// Perform the scroll operation.
-		final Rectangle visibleRect = tblImageResults.getVisibleRect();
-		final Rectangle targetRect = new Rectangle(visibleRect);
-		if(animate) {
-			final int ANIM_FRAMERATE = 30;
-			final double ANIM_DURATION = 0.35;
-			ActionListener drawFrame = new ActionListener() {
-				private final int LIMIT = visibleRect.x + (page - currentPage) * visibleRect.width;
-				private final int ANIM_FRAME_DIFF = (int) (LIMIT / (ANIM_DURATION * ANIM_FRAMERATE));
-				private int current = ANIM_FRAME_DIFF;
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					if(current <= LIMIT) {
-						System.out.println(visibleRect.width + ", " + calculateCellWidth() * STD_COL_COUNT);
-						current = (current + ANIM_FRAME_DIFF > LIMIT ? LIMIT : current + ANIM_FRAME_DIFF);
-						Rectangle frameRect = new Rectangle(visibleRect);
-						frameRect.x += current;
-						tblImageResults.scrollRectToVisible(frameRect);
-						System.out.println("Visible: " + tblImageResults.getVisibleRect().x + " #" + current + ", " + LIMIT);
-					}
-					// After we have reached the limit, stop the animation.
-					if(current >= LIMIT) {
-						System.out.println("Stopping animation.");
-						animationTimer.stop();
-						new Thread(new Runnable() {
-
-							@Override
-							public void run() {
-								// Pre-load the next page of results.
-								loadPage(page + 1);
-							}
-							
-						}).start();
-					}
-				}
-				
-			};
-			animationTimer = new Timer(1000 / ANIM_FRAMERATE, drawFrame); // 30 FPS.
-			animationTimer.start();
-		} else {
-			targetRect.x += targetRect.width;
-			tblImageResults.scrollRectToVisible(targetRect);
-			// Pre-load the next page of results.
-			loadPage(page + 1);
-		}
-	}
-	
-	/**
-	 * Scrolls the view to the next page of image results and then returns whether there is an additional page of
-	 * content which can be read from the image source.
-	 * 
-	 * @return <code>true</code> if there is another valid page after this one, <code>false</code> otherwise.
-	 */
-	private synchronized void nextPage(boolean animate) { //TODO void function. Described with @return. Seems mismatch
-		scrollPageToVisible(currentPage + 1, animate);
-		currentPage++;
-	}
-	
-	/**
-	 * Scrolls the view to the previous page of image results and then returns whether there is an previous page of
-	 * content which can be read from the image source.
-	 * 
-	 * @return <code>true</code> if there is another valid page before this one, <code>false</code> otherwise.
-	 */
-	private synchronized void previousPage(boolean animate) { //TODO void function. Described with @return. Seems mismatch
-		//TODO looks like this should not be empty and should be a mirror of nextPage()
-		scrollPageToVisible(currentPage - 1, animate);
-		currentPage--;
-	}
-	
-	/*
-	 * TODO
-	 */
 	private class DummySingletonTraversable implements Traversable<ImageResult> {
 		
 		private final Traverser<ImageResult> SINGLETON;
@@ -707,62 +559,41 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
-	/*
-	 * TODO
-	 */
 	private class DummyTraverser implements Traverser<ImageResult> {
 		private java.util.Random rand = new java.util.Random();
 		private int currentIdx = 0;
 		private int maxIdx = rand.nextInt(500);
 		
-		/*
-		 * Returns if there is an item after this one
-		 * @return boolean describing if there are any more elements 
-		 */
 		@Override
 		public boolean hasNext() {
 			return currentIdx < maxIdx;
 		}
-		
-		/*
-		 * Moves the traverser to the next element and returns it
-		 * @return <code>ImageResult</code> - The next item in the <code>Traverser</code>
-		 */
+
 		@Override
 		public ImageResult next() {
 			return new DummyImageResult(currentIdx++ + "");
 		}
 
-		/*
-		 * TODO
-		 * Unsupported function
-		 */
 		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
 
-		/*
-		 * Returns if there is an item before this one
-		 * @return boolean describing if there are any more elements before this one
-		 */
 		@Override
 		public boolean hasPrevious() {
 			return currentIdx > 0;
 		}
+		
+		@Override
+		public int index() {
+			return currentIdx;
+		}
 
-		/*
-		 * Moves the traverser to the previous element and returns it
-		 * @return <code>ImageResult</code> - The previous item in the <code>Traverser</code>
-		 */
 		@Override
 		public ImageResult previous() {
 			return new DummyImageResult(currentIdx-- + "");
 		}
 		
-		/*
-		 * TODO
-		 */
 		private class DummyImageResult implements ImageResult {
 			
 			private String title;
@@ -771,7 +602,9 @@ public class DefaultView extends JFrame implements View {
 			public DummyImageResult(String articleTitle) {
 				title = articleTitle;
 			}
-			public void close() throws IOException {}
+			public void close() throws IOException {
+				image = null;
+			}
 			public BufferedImage getImage() {
 				if(image == null) {
 					try {
@@ -789,14 +622,14 @@ public class DefaultView extends JFrame implements View {
 			} 
 			public String getArticleAbstract() {return null;}
 			public URL getArticleURL() {return null;}
+			public boolean isLoaded() {
+				return image != null;
+			}
 			
 		}
 		
 	}
 	
-	/*
-	 * TODO
-	 */
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {
 		
 		// Background color values.
@@ -835,9 +668,6 @@ public class DefaultView extends JFrame implements View {
 			
 		}
 		
-		/*
-		 * TODO
-		 */
 		public Component getTableCellRendererComponent(
 				JTable table, 
 				Object value, 
@@ -877,16 +707,16 @@ public class DefaultView extends JFrame implements View {
 				}
 				if(value instanceof Icon) {
 					rendererComp.setIcon((Icon) value);
-					rendererComp.setText("test"); // TODO Test harness: should be null.
+					rendererComp.setText("Error");
 				} else if(value instanceof Image) {
 					rendererComp.setIcon(new ImageIcon((Image) value));
-					rendererComp.setText(null);
+					rendererComp.setText("Error");
 				} else if(value instanceof ImageResult) {
 					try {
 						rendererComp.setIcon(new ImageIcon(((ImageResult) value).getImage()));
-					} catch (IOException e) { //temporary just so I can compile and study the code - ES
-						// TODO Auto-generated catch block
-						throw new RuntimeException("an IOException occurred while loading images: " + e.getMessage(), e);
+					} catch (IOException e) {
+						// Should not happen because the image loader removes images which fail to load from results.
+						rendererComp.setIcon(UIManager.getIcon(ERROR_ICON_KEY));
 					}
 					rendererComp.setText(((ImageResult) value).getArticleTitle()); // TODO Truncate text if it is too long.
 				} else {
@@ -900,15 +730,15 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
-	/*
-	 * TODO
-	 */
 	private class MetroButton extends JLabel implements ButtonModel {
 		
+		/** Serialization support. */
+		private static final long serialVersionUID = 1L;
+		// Button appearance. 
 		protected final Color UNSELECTED_COLOR;
 		protected final Color SELECTED_COLOR;
 		protected final Color ROLLOVER_COLOR;
-		
+		// Button functionality.
 		protected boolean isPressed = false;
 		protected boolean isRollover = false;
 		protected EventListenerList listeners = new EventListenerList();
@@ -1025,10 +855,6 @@ public class DefaultView extends JFrame implements View {
 			});
 		}
 
-		/*
-		 * Returns the selected object
-		 * @return <code>Object</code> that is currently selected or null if none
-		 */
 		@Override
 		public Object[] getSelectedObjects() {
 			if(isPressed) {

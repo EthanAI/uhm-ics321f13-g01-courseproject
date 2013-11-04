@@ -10,4 +10,6 @@ public interface ImageLoadListener extends EventListener {
 	
 	void onLoaded(ImageResult[] loaded);
 	
+	void onError(Exception error);
+	
 }
