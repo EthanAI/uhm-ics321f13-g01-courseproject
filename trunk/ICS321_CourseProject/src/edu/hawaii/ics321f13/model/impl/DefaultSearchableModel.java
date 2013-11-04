@@ -67,7 +67,8 @@ public class DefaultSearchableModel implements SearchableModel {
 		// Check if we know how to handle this query.
 		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
 			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-								" WHERE title = '" + key + "'"; 
+								" WHERE title LIKE '%" + key + "%'"; 
+			System.out.println(SQL);
 			return executeQuery(SQL);
 		} else {
 			throw new UnsupportedOperationException("unsupported query result type/constraint combination");
