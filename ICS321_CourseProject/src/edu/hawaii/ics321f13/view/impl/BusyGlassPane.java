@@ -123,6 +123,13 @@ public class BusyGlassPane extends JComponent {
 //		visibleOrWaiting = visible;
 	}
 	
+	/*
+	 * Sets whether or not the <code>BusyGlassPane</code> should be visible
+	 * 
+	 * @param visible - boolean indicating if the <code>BusyGlassPane</code> to be visible
+	 * @param force - boolean indicating the <code>setVisible</code> method should be bypassed
+	 * and the <code>BusyGlassPane</code> should be manually and directly set to be the indicated visibility
+	 */
 	@SuppressWarnings("unused")
 	private void setVisible(boolean visible, boolean force) {
 		if(force) {
@@ -132,10 +139,20 @@ public class BusyGlassPane extends JComponent {
 		}
 	}
 	
+	/*
+	 * Accessor method for the visibility of the <code>BusyGlassPane</code>
+	 * 
+	 * @return a boolean indicating if the <code>BusyGlassPane</code> is visible
+	 */
 	public boolean isVisible() {
 		return super.isVisible();
 	}
 	
+	/*
+	 * Sets the message shown during the <code>BusyGlassPane</code>
+	 * 
+	 * @param text - is the String holding the message to be shown
+	 */
 	public void setText(String text) {
 		if(text == null) {
 			infoText = "";
@@ -144,14 +161,29 @@ public class BusyGlassPane extends JComponent {
 		}
 	}
 	
+	/*
+	 * Sets the font that will be used during the message shown
+	 * 
+	 * @param fontName - String holding the name of the font
+	 */
 	public void setFont(String fontName) {
 		textFont = Objects.requireNonNull(fontName);
 	}
 	
+	/*
+	 * Sets the color of the text used
+	 * 
+	 * @param textColor - String holding the name of the color of the text
+	 */
 	public void setTextColor(Color textColor) {
 		this.textColor = Objects.requireNonNull(textColor);
 	}
 	
+	/*
+	 * Sets the refresh rate for the <code>BusyGlassPane</code>
+	 * 
+	 * @param frameRate - int holding the number of frames per second.
+	 */
 	public void setFrameRate(int frameRate) {
 		if(frameRate > 0) {
 			this.frameRate = frameRate;
@@ -160,10 +192,18 @@ public class BusyGlassPane extends JComponent {
 		}
 	}
 	
+	/*
+	 * Accessor that gets the running condition of the <code>BusyGlassPane</code>
+	 * 
+	 * @param boolean is the <code>isRunning</code> value
+	 */
 	public boolean isRunning() {
 		return isRunning;
 	}
 	
+	/*
+	 * Begins the execution of the <code>BusyGlassPane</code>
+	 */
 	public void start() {
 	    if (isRunning) {
 	      return;
@@ -178,10 +218,18 @@ public class BusyGlassPane extends JComponent {
 	    animationTimer.start();
 	}
 	 
+	/*
+	 * Sets <code>isFadingOut</code> to be true
+	 */
 	public void stop() {
 		isFadingOut = true;
 	}
 	
+	/*
+	 * Performs the displaying of the <code>BusyGlassPane</code> with it's message and wait indicator
+	 * 
+	 * @param g the Graphics element being used
+	 */
 	@Override
 	public void paint (Graphics g) {
 	    // Paint the view.

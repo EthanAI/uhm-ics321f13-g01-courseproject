@@ -8,6 +8,10 @@ import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 
+/*
+ * Naive image loader that loads images on at a time. Note: Future implementation will work 
+ * asynchronously
+ */
 public class SynchronousImageLoader extends AbstractImageLoader {
 
 	@Override
@@ -15,6 +19,16 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 		// There are no thread pools to close, so do nothing.
 	}
 
+	/*
+	 * Downloads a set number of images
+	 * 
+	 * @param source - a <code>Traversable</code> list of <code>ImageResult</code>s
+	 * @param loadCount - the number of images to download
+	 * 
+	 * @return int - the number of images actually loaded
+	 * 
+	 * @throws <code>IOException</code>
+	 */
 	@Override
 	public int loadImages(Traversable<ImageResult> source, int loadCount) throws IOException {
 		ArrayList<ImageResult> loaded = new ArrayList<ImageResult>();
@@ -28,6 +42,9 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 		return loaded.size();
 	}
 	
+	/*
+	 * TODO
+	 */
 	private void fireOnLoaded(ImageResult loaded) {
 		ImageLoadListener[] loadListeners = listeners.getListeners(ImageLoadListener.class);
 		for(ImageLoadListener loadListener : loadListeners) {
@@ -35,6 +52,9 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 		}
 	}
 	
+	/*
+	 * TODO
+	 */
 	private void fireOnLoaded(ImageResult[] loaded) {
 		ImageLoadListener[] loadListeners = listeners.getListeners(ImageLoadListener.class);
 		for(ImageLoadListener loadListener : loadListeners) {

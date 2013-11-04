@@ -95,6 +95,11 @@ public class DefaultController implements Controller {
 		});
 	}
 	
+	/*
+	 * Searches the database held by the <code>Model</code> for images related to a topic. 
+	 * 
+	 * @param searchTerm is a string of the topic the user wants pictures of
+	 */
 	@Override
 	public void onQuery(String searchTerm) {
 		MODEL.search(searchTerm, BufferedImage.class, ResultConstraint.CONTAINS);
