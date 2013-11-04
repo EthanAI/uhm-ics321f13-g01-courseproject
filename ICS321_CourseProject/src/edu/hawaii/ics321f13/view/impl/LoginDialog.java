@@ -18,6 +18,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.swing.JButton;
 import javax.swing.JTextField;
@@ -27,7 +28,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	/** Serialization support */
 	private static final long serialVersionUID = 1L;
 	// Synchronization constants.
-	private final Semaphore LOCK = new Semaphore(1, true);
+	private final ReentrantLock LOCK = new ReentrantLock(true);
 	// UI components. 
 	private JPasswordField passwordField;
 	private JTextField usernameField;
@@ -37,7 +38,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	 * Constructor for the <code>LoginDialog</code>
 	 */
 	public LoginDialog() {
-		LOCK.acquireUninterruptibly(); // Acquire here to prevent other threads from acquiring after construction.
+		LOCK.lock(); // Acquire here to prevent other threads from acquiring after construction.
 		setTitle("Login Dialog");
 		getContentPane().setLayout(null);
 		
@@ -89,7 +90,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				setVisible(false);
-				LOCK.release();
+				LOCK.unlock();
 			}
 		});
 		// Since the LoginPrompt is abstracted from any visual representation, the caller is freed from the 
@@ -110,7 +111,8 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 			// Ignore interrupted exceptions because it is unacceptable for this method to return spuriously(randomly).
 			// The contract of this method is that it will only return after the user has clicked "OK", otherwise
 			// the thread is disabled for thread-scheduling purposes.
-			LOCK.acquireUninterruptibly();
+			LOCK.lock();
+			LOCK.unlock(); // Unlock the lock to allow other threads to retreive login info.
 		}
 		return new DefaultLoginInfo(usernameField.getText(), passwordField.getPassword());
 	}
