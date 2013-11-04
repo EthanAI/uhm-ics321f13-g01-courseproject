@@ -30,12 +30,18 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 	 * @throws <code>IOException</code>
 	 */
 	@Override
-	public int loadImages(Traversable<ImageResult> source, int loadCount) throws IOException {
+	public int loadImages(Traversable<ImageResult> source, int loadCount) {
 		ArrayList<ImageResult> loaded = new ArrayList<ImageResult>();
 		Traverser<ImageResult> images = source.traverser();
 		for(int i = 0; i < loadCount && images.hasNext(); i++) {
 			ImageResult result = images.next();
-			result.getImage(); // Load the actual image.
+			if(!result.isLoaded()) {
+				try {
+					result.getImage(); // Load the actual image.
+				} catch (IOException e) {
+					fireOnError(e);
+				}
+			}
 			fireOnLoaded(result);
 		}
 		fireOnLoaded(loaded.toArray(new ImageResult[loaded.size()]));
@@ -59,6 +65,13 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 		ImageLoadListener[] loadListeners = listeners.getListeners(ImageLoadListener.class);
 		for(ImageLoadListener loadListener : loadListeners) {
 			loadListener.onLoaded(loaded);
+		}
+	}
+	
+	private void fireOnError(Exception error) {
+		ImageLoadListener[] loadListeners = listeners.getListeners(ImageLoadListener.class);
+		for(ImageLoadListener loadListener : loadListeners) {
+			loadListener.onError(error);
 		}
 	}
 

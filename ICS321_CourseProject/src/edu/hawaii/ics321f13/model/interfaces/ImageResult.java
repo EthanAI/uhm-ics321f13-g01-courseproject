@@ -17,4 +17,6 @@ public interface ImageResult extends Closeable {
 	
 	URL getArticleURL();
 	
+	boolean isLoaded();
+	
 }

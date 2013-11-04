@@ -123,4 +123,9 @@ public class DefaultImageResult implements ImageResult {
 	public URL getArticleURL() {
 		return ARTICLE_URL;
 	}
+
+	@Override
+	public boolean isLoaded() {
+		return imageCache != null;
+	}
 }
