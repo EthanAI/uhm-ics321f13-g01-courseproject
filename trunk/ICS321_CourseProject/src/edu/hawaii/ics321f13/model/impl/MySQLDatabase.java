@@ -15,8 +15,6 @@ public class MySQLDatabase implements Database {
 	private final Connection CONN;
 	private boolean isClosed = false;
 	
-	private final boolean DEBUG = false; 
-	
 	/*
 	 * Constructor establishes connection to the database using the correct JDBC URL and the supplied <code>LoginInfo</code> and port
 	 * 
@@ -25,11 +23,7 @@ public class MySQLDatabase implements Database {
 	 */
 	public MySQLDatabase(LoginInfo login, int port) throws SQLException {
 		String connectionURL = String.format("jdbc:mysql://localhost:%d/my_wiki", port);
-		if(!DEBUG) {
-			CONN = DriverManager.getConnection(connectionURL, login.getUserName(), new String(login.getPassword()));
-		} else {
-			CONN = null;
-		}
+		CONN = DriverManager.getConnection(connectionURL, login.getUserName(), new String(login.getPassword()));
 	}
 
 	@Override
