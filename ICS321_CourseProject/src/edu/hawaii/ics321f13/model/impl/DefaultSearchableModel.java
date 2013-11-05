@@ -18,6 +18,22 @@ import edu.hawaii.ics321f13.model.interfaces.Traverser;
 
 public class DefaultSearchableModel implements SearchableModel {
 	
+	public enum ResultColumnInfo {
+		ARTICLE_TITLE(1),
+		IMAGE_URL(2);
+		
+		private final int COL_IDX;
+		
+		ResultColumnInfo(int columnIndex) {
+			COL_IDX = columnIndex;
+		}
+		
+		public int getColumnIndex() {
+			return COL_IDX;
+		}
+		
+	}
+	
 	private final Database DATABASE;
 	private String TITLE_IMAGE_TABLE  = "test_table_1"; //probably this needs to get moved into MySQLDatabase instead
 	
@@ -232,13 +248,13 @@ public class DefaultSearchableModel implements SearchableModel {
 		private ImageResult parseResult() {
 			String imageURLString = null;
 			try {
-				String articleTitle = QUERY_RESULTS.getString(0);
-				imageURLString = URL_PREFIX + QUERY_RESULTS.getString(1);
+				String articleTitle = QUERY_RESULTS.getString(ResultColumnInfo.ARTICLE_TITLE.getColumnIndex());
+				imageURLString = URL_PREFIX + QUERY_RESULTS.getString(ResultColumnInfo.IMAGE_URL.getColumnIndex());
 				URL imageURL = new URL(imageURLString);
 				return new DefaultImageResult(articleTitle, imageURL);
 			} catch (SQLException e) {
-				throw new RuntimeException(
-						"unable to parse query results as specified type (SQLException): " + e.getMessage(), e);
+				throw new ClassCastException(
+						"unable to parse query results as specified type (SQLException): " + e.getMessage());
 			} catch (MalformedURLException e) {
 				throw new RuntimeException(
 						"'" + URL_PREFIX + imageURLString + "' is not a valid URL (MalformedURLException): " + e.getMessage(), e);
