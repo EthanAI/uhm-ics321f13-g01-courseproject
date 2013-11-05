@@ -13,6 +13,7 @@ import edu.hawaii.ics321f13.model.interfaces.LoginInfo;
 import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.SearchableModel;
+import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.view.impl.ViewEventType;
 import edu.hawaii.ics321f13.view.interfaces.View;
 import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
@@ -24,7 +25,7 @@ import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
  * @author Kyle Twogood
  *
  */
-public class DefaultController implements Controller {
+public class DefaultController implements Controller<ImageResult> {
 	
 	// Default mysql port.
 	private static final int DEFAULT_PORT = 3306;
@@ -82,7 +83,8 @@ public class DefaultController implements Controller {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if(e.getID() == ViewEventType.QUERY.getID()) {
-					onQuery(Objects.requireNonNull(e.getActionCommand()));
+					Traversable<ImageResult> queryResults = onQuery(Objects.requireNonNull(e.getActionCommand()));
+					VIEW.setImageSource(queryResults);
 				} else if(e.getID() == ViewEventType.CLOSE.getID()) {
 					onClose();
 				} else {
@@ -102,8 +104,8 @@ public class DefaultController implements Controller {
 	 * @param searchTerm is a string of the topic the user wants pictures of
 	 */
 	@Override
-	public void onQuery(String searchTerm) {
-		MODEL.search(searchTerm, ImageResult.class, ResultConstraint.CONTAINS);
+	public Traversable<ImageResult> onQuery(String searchTerm) {
+		return MODEL.search(searchTerm, ImageResult.class, ResultConstraint.CONTAINS);
 	}
 
 	@Override

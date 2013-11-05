@@ -1,8 +1,10 @@
 package edu.hawaii.ics321f13.controller.interfaces;
 
-public interface Controller {
+import edu.hawaii.ics321f13.model.interfaces.Traversable;
+
+public interface Controller<E> {
 	
-	void onQuery(String searchTerm);
+	Traversable<E> onQuery(String searchTerm);
 	
 	void onClose();
 	
