@@ -463,7 +463,7 @@ public class DefaultView extends JFrame implements View {
 	}
 
 	@Override
-	public synchronized void setImageSource(Traversable<ImageResult> source) {
+	public void setImageSource(Traversable<ImageResult> source) {
 		imageSource = Objects.requireNonNull(source).traverser();
 		imageSourceTraversable = source;
 		clear();
