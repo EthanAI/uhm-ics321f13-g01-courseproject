@@ -17,6 +17,8 @@ import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 
 public class DefaultImageResult implements ImageResult {
 	
+	private final int INDEX_MEDIUM_IMAGE = 0;
+	
 	private final URL IMAGE_URL;
 	private final URL ARTICLE_URL;
 	private final String ARTICLE_TITLE;
@@ -65,28 +67,29 @@ public class DefaultImageResult implements ImageResult {
 	 */
 	@Override
 	public BufferedImage getImage() throws IOException { //throw IOExceptions for controller to handle
-		final int INDEX_MEDIUM_IMAGE = 0;
-		String imageUrlString;
-		System.out.println("Getting Image");
-		try { 
-			Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
-			
-			Element image = doc.select("img").get(INDEX_MEDIUM_IMAGE); //possible to get other sizes of the image by venturing into .get(i) territory
-			imageUrlString = image.absUrl("src");
-			/*  
-			//requires function passed image id name, not image url can get smaller images. Maybe nice for V2.0 of the project
-			imageUrlText = image.absUrl("src");
-			for(int i = INDEX_MEDIUM_IMAGE + 1; !imageUrlText.contains(imageName) && i < doc.select("img").size(); i++) { //check we didn't run out of links
-				image = doc.select("img").get(i);
+		if(imageCache == null) {
+			String imageUrlString;
+			System.out.println("Getting Image");
+			try { 
+				Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
+				
+				Element image = doc.select("img").get(INDEX_MEDIUM_IMAGE); //possible to get other sizes of the image by venturing into .get(i) territory
+				imageUrlString = image.absUrl("src");
+				/*  
+				//requires function passed image id name, not image url can get smaller images. Maybe nice for V2.0 of the project
 				imageUrlText = image.absUrl("src");
-				//System.out.println("Replacing image selection: " + imageUrlText);
+				for(int i = INDEX_MEDIUM_IMAGE + 1; !imageUrlText.contains(imageName) && i < doc.select("img").size(); i++) { //check we didn't run out of links
+					image = doc.select("img").get(i);
+					imageUrlText = image.absUrl("src");
+					//System.out.println("Replacing image selection: " + imageUrlText);
+				}
+				*/
+				//System.out.println(imageUrlText);
+				imageCache = ImageIO.read(new URL(imageUrlString));
+			} 
+			catch (IndexOutOfBoundsException e) { //will not be triggered while using doc.select("img").first(); implementation. If changed, should discuss how to handle exceptions
+				throw new IOException(e);
 			}
-			*/
-			//System.out.println(imageUrlText);
-			imageCache = ImageIO.read(new URL(imageUrlString));
-		} 
-		catch (IndexOutOfBoundsException e) { //will not be triggered while using doc.select("img").first(); implementation. If changed, should discuss how to handle exceptions
-			throw new IOException(e);
 		}
 		return imageCache;
 	}

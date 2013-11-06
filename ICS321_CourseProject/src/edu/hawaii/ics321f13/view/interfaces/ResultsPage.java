@@ -6,7 +6,7 @@ import java.io.IOException;
 public interface ResultsPage<E> extends Comparable<ResultsPage<E>>, Closeable {
 	
 	public enum ActivityChangeAction {
-		ANIMATE, 
+		ANIMATE, CONCURRENT,
 		AUTOLOAD_NEXT, AUTOLOAD_PREVIOUS, AUTOLOAD_ALL}
 	
 	int getPageIndex();
@@ -25,8 +25,8 @@ public interface ResultsPage<E> extends Comparable<ResultsPage<E>>, Closeable {
 	
 	void scrollToVisible(boolean animate, Runnable onComplete);
 	
-	int setActive(ActivityChangeAction... actions);
+	void setActive(ActivityChangeAction... actions);
 	
-	int setActive(Runnable onComplete, ActivityChangeAction... actions);
+	void setActive(Runnable onComplete, ActivityChangeAction... actions);
 	
 }
