@@ -6,16 +6,10 @@ import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.Insets;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Toolkit;
 
 import javax.swing.BorderFactory;
@@ -35,9 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumn;
 import javax.swing.JTextField;
-import javax.swing.JButton;
 import java.awt.Font;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -62,30 +54,20 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
-import java.io.Closeable;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.TimerTask;
-import java.util.concurrent.Semaphore;
-
 import javax.swing.ScrollPaneConstants;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
-import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
 import edu.hawaii.ics321f13.view.interfaces.View;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
 
 public class DefaultView extends JFrame implements View {
 
@@ -168,40 +150,10 @@ public class DefaultView extends JFrame implements View {
 					.addContainerGap())
 		);
 		
-		txtSearchField = new JTextField();
-		txtSearchField.setSelectionColor(Color.LIGHT_GRAY);
-		txtSearchField.setSelectedTextColor(Color.WHITE);
-		txtSearchField.setForeground(Color.LIGHT_GRAY);
-		txtSearchField.addFocusListener(new FocusAdapter() {
-			@Override
-			public void focusGained(FocusEvent e) {
-				searchFieldStateChanged(true);
-				txtSearchField.selectAll();
-			}
-
-			@Override
-			public void focusLost(FocusEvent e) {
-				searchFieldStateChanged(false);
-			}
-		});
-		txtSearchField.addMouseListener(new MouseAdapter() {
-			
-			@Override
-			public void mouseEntered(MouseEvent e) {
-				searchFieldStateChanged(true);
-			}
-			
-			@Override
-			public void mouseExited(MouseEvent e) {
-				searchFieldStateChanged(false);
-			}
-		});
-		
-		txtSearchField.setBorder(new CompoundBorder(new LineBorder(new Color(192, 192, 192), 1, false), 
-				new EmptyBorder(0, 10, 0, 10)));
-		txtSearchField.setFont(new Font("Segoe UI", Font.PLAIN, 20));
-		txtSearchField.setText("Search images...");
-		txtSearchField.setColumns(10);
+		txtSearchField = new MetroTextField("Search images...", 
+				new Color(192, 192, 192), new Color(192, 192, 192), new Color(160, 160, 160), 
+				Color.WHITE, Color.LIGHT_GRAY, Color.WHITE, 
+				new Color(192, 192, 192), new Color(175, 175, 175), new Color(160, 160, 160));
 		
 		// To use GUI editor, comment out this block.
 		// START BLOCK
@@ -522,114 +474,6 @@ public class DefaultView extends JFrame implements View {
 		}
 	}
 	
-	private String lastSearchFieldText = "";
-	private boolean currentState = false;
-	private void searchFieldStateChanged(boolean active) {
-		if(currentState != active && active) {
-			currentState = active;
-			txtSearchField.setBorder(BorderFactory.createCompoundBorder(new LineBorder(new Color(150, 150, 150), 1, false), 
-					BorderFactory.createEmptyBorder(0, 10, 0, 10)));
-			txtSearchField.setText(lastSearchFieldText);
-		} else if(currentState != active && !active && txtSearchField.getMousePosition() == null && !txtSearchField.hasFocus()) {
-			currentState = active;
-			txtSearchField.setBorder(BorderFactory.createCompoundBorder(new LineBorder(Color.LIGHT_GRAY, 1, false), 
-					BorderFactory.createEmptyBorder(0, 10, 0, 10)));
-			lastSearchFieldText = txtSearchField.getText();
-			txtSearchField.setText("Search images...");
-		}
-	}
-	
-	private class DummySingletonTraversable implements Traversable<ImageResult> {
-		
-		private final Traverser<ImageResult> SINGLETON;
-		
-		public DummySingletonTraversable(Traverser<ImageResult> singleton) {
-			SINGLETON = singleton;
-		}
-		
-		@Override
-		public Iterator<ImageResult> iterator() {
-			return SINGLETON;
-		}
-
-		@Override
-		public Traverser<ImageResult> traverser() {
-			return SINGLETON;
-		}
-		
-	}
-	
-	private class DummyTraverser implements Traverser<ImageResult> {
-		private java.util.Random rand = new java.util.Random();
-		private int currentIdx = 0;
-		private int maxIdx = rand.nextInt(500);
-		
-		@Override
-		public boolean hasNext() {
-			return currentIdx < maxIdx;
-		}
-
-		@Override
-		public ImageResult next() {
-			return new DummyImageResult(currentIdx++ + "");
-		}
-
-		@Override
-		public void remove() {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public boolean hasPrevious() {
-			return currentIdx > 0;
-		}
-		
-		@Override
-		public int index() {
-			return currentIdx;
-		}
-
-		@Override
-		public ImageResult previous() {
-			return new DummyImageResult(currentIdx-- + "");
-		}
-		
-		private class DummyImageResult implements ImageResult {
-			
-			private String title;
-			private BufferedImage image = null;
-			
-			public DummyImageResult(String articleTitle) {
-				title = articleTitle;
-			}
-			public void close() throws IOException {
-				image = null;
-			}
-			public BufferedImage getImage() {
-				if(image == null) {
-					try {
-						image = ImageIO.read(new URL(
-								"http://i285.photobucket.com/albums/ll45/M00NGRL67/Backgrounds/Green/CheckeredGreen.jpg"));
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-				return image;
-			}
-			public URL getImageURL() {return null;}
-			public String getArticleTitle() {
-				return title;
-			} 
-			public String getArticleAbstract() {return null;}
-			public URL getArticleURL() {return null;}
-			public boolean isLoaded() {
-				return image != null;
-			}
-			
-		}
-		
-	}
-	
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {
 		
 		// Background color values.
@@ -726,6 +570,138 @@ public class DefaultView extends JFrame implements View {
 			} else {
 				return defaultRndrComp;
 			}
+		}
+		
+	}
+	
+	private class MetroTextField extends JTextField {
+		
+		// State constants. Opting for integer values here due to inner class restrictions.
+		private final int STATE_INACTIVE = -1;	// User is currently editing text.
+		private final int STATE_ROLLOVER = 0;	// Mouse is over component.
+		private final int STATE_ACTIVE = 1;		// User is currently editing text.
+		
+		// View constants.
+		private final Color INACTIVE_TEXT;
+		private final Color ACTIVE_TEXT;
+		private final Color ROLLOVER_TEXT;
+		
+		private final Color UNSELECTED_BG;
+		private final Color SELECTED_BG;
+		private final Color SELECTED_TEXT;
+		
+		private final Color INACTIVE_BORDER;
+		private final Color ACTIVE_BORDER;
+		private final Color ROLLOVER_BORDER;
+		
+		private final String ON_INACTIVE;
+		
+		// State save/restore.
+		private String activeText = "";
+		private int currentState = -100; // Set to invalid state so inital state setting is not ignored as a duplicate.
+		
+		public MetroTextField(String onInactive, Color inactiveText, Color rolloverText, Color activeText,
+				Color unselectedBackground, Color selectedBackground, Color selectedText, 
+				Color inactiveBorder, Color rolloverBorder, Color activeBorder) {
+			
+			super();
+			// Variables assignment.
+			INACTIVE_TEXT = inactiveText;
+			ACTIVE_TEXT = activeText;
+			ROLLOVER_TEXT = rolloverText;
+			
+			UNSELECTED_BG = unselectedBackground;
+			SELECTED_BG = selectedBackground;
+			SELECTED_TEXT = selectedText;
+			
+			INACTIVE_BORDER = inactiveBorder;
+			ACTIVE_BORDER = activeBorder;
+			ROLLOVER_BORDER = rolloverBorder;
+			
+			ON_INACTIVE = onInactive;
+			// Configure selection colors.
+			setSelectionColor(SELECTED_BG);
+			setSelectedTextColor(SELECTED_TEXT);
+			// Configure permanent background state. 
+			setBackground(UNSELECTED_BG);
+			
+			addFocusListener(new FocusAdapter() {
+				@Override
+				public void focusGained(FocusEvent e) {
+					setState(STATE_ACTIVE);
+					selectAll();
+				}
+
+				@Override
+				public void focusLost(FocusEvent e) {
+					if(getMousePosition() != null) {
+						setState(STATE_ROLLOVER);
+					} else {
+						setState(STATE_INACTIVE);
+					}
+				}
+			});
+			addMouseListener(new MouseAdapter() {
+				
+				@Override
+				public void mouseEntered(MouseEvent e) {
+					if(currentState != STATE_ACTIVE) {
+						setState(STATE_ROLLOVER);
+					}
+				}
+				
+				@Override
+				public void mouseExited(MouseEvent e) {
+					if(currentState != STATE_ACTIVE) {
+						setState(STATE_INACTIVE);
+					}
+				}
+			});
+			
+			setFont(new Font("Segoe UI", Font.PLAIN, 20));
+			setColumns(10);
+			// Set the initial state.
+			setState(STATE_INACTIVE);
+		}
+		
+		@Override
+		public String getText() {
+			if(currentState == STATE_ACTIVE) {
+				return super.getText();
+			} else {
+				return activeText;
+			}
+		}
+		
+		private void setState(int state) {
+			if(state == currentState) {
+				return;
+			}
+			
+			if(state == STATE_INACTIVE) {
+				setForeground(INACTIVE_TEXT);
+				setBorder(BorderFactory.createCompoundBorder(new LineBorder(INACTIVE_BORDER, 1, false), 
+						BorderFactory.createEmptyBorder(0, 10, 0, 10)));
+				// Use unmodified verson of the getText() method to guarantee independence of the changes made to the 
+				// return value by the method override implemented by this class.
+				activeText = super.getText(); 
+				setText(ON_INACTIVE);
+			} else if(state == STATE_ROLLOVER) {
+				setForeground(ROLLOVER_TEXT);
+				setBorder(BorderFactory.createCompoundBorder(new LineBorder(ROLLOVER_BORDER, 1, false), 
+						BorderFactory.createEmptyBorder(0, 10, 0, 10)));
+				if(currentState == STATE_INACTIVE) {
+					setText(activeText);
+				}
+			} else {
+				setForeground(ACTIVE_TEXT);
+				setBorder(BorderFactory.createCompoundBorder(new LineBorder(ACTIVE_BORDER, 1, false), 
+						BorderFactory.createEmptyBorder(0, 10, 0, 10)));
+				if(currentState == STATE_INACTIVE) {
+					setText(activeText);
+				}
+			}
+			currentState = state;
 		}
 		
 	}
@@ -1001,4 +977,96 @@ public class DefaultView extends JFrame implements View {
 		}
 		
 	}
+	
+	private class DummySingletonTraversable implements Traversable<ImageResult> {
+		
+		private final Traverser<ImageResult> SINGLETON;
+		
+		public DummySingletonTraversable(Traverser<ImageResult> singleton) {
+			SINGLETON = singleton;
+		}
+		
+		@Override
+		public Iterator<ImageResult> iterator() {
+			return SINGLETON;
+		}
+
+		@Override
+		public Traverser<ImageResult> traverser() {
+			return SINGLETON;
+		}
+		
+	}
+	
+	private class DummyTraverser implements Traverser<ImageResult> {
+		private java.util.Random rand = new java.util.Random();
+		private int currentIdx = 0;
+		private int maxIdx = rand.nextInt(500);
+		
+		@Override
+		public boolean hasNext() {
+			return currentIdx < maxIdx;
+		}
+
+		@Override
+		public ImageResult next() {
+			return new DummyImageResult(currentIdx++ + "");
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean hasPrevious() {
+			return currentIdx > 0;
+		}
+		
+		@Override
+		public int index() {
+			return currentIdx;
+		}
+
+		@Override
+		public ImageResult previous() {
+			return new DummyImageResult(currentIdx-- + "");
+		}
+		
+		private class DummyImageResult implements ImageResult {
+			
+			private String title;
+			private BufferedImage image = null;
+			
+			public DummyImageResult(String articleTitle) {
+				title = articleTitle;
+			}
+			public void close() throws IOException {
+				image = null;
+			}
+			public BufferedImage getImage() {
+				if(image == null) {
+					try {
+						image = ImageIO.read(new URL(
+								"http://i285.photobucket.com/albums/ll45/M00NGRL67/Backgrounds/Green/CheckeredGreen.jpg"));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				return image;
+			}
+			public URL getImageURL() {return null;}
+			public String getArticleTitle() {
+				return title;
+			} 
+			public String getArticleAbstract() {return null;}
+			public URL getArticleURL() {return null;}
+			public boolean isLoaded() {
+				return image != null;
+			}
+			
+		}
+		
+	}
+	
 }
