@@ -97,15 +97,14 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 	}
 
 	@Override
-	public int setActive(ResultsPage.ActivityChangeAction... actions) {
-		return populatePage();
+	public void setActive(ResultsPage.ActivityChangeAction... actions) {
+		populatePage();
 	}
 
 	@Override
-	public int setActive(Runnable onComplete, ResultsPage.ActivityChangeAction... actions) {
-		int loaded = populatePage();
+	public void setActive(Runnable onComplete, ResultsPage.ActivityChangeAction... actions) {
+		populatePage();
 		onComplete.run();
-		return loaded;
 	}
 
 }

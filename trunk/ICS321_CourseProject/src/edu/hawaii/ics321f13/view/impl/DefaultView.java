@@ -67,6 +67,7 @@ import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
+import edu.hawaii.ics321f13.view.interfaces.ResultsPage.ActivityChangeAction;
 import edu.hawaii.ics321f13.view.interfaces.View;
 
 public class DefaultView extends JFrame implements View {
@@ -434,7 +435,15 @@ public class DefaultView extends JFrame implements View {
 		} else {
 			currentPage = new EmptyResultSetPage("No results found", tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
 		}
-		currentPage.setActive();
+		setBusy(true);
+		currentPage.setActive(new Runnable() {
+
+			@Override
+			public void run() {
+				setBusy(false);
+			}
+			
+		}, ActivityChangeAction.CONCURRENT);
 	}
 
 	@Override

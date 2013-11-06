@@ -232,14 +232,25 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		}
 	}
 	
-	public int setActive(ActivityChangeAction... actions) {
-		return setActive(null, actions);
+	public void setActive(ActivityChangeAction... actions) {
+		setActive(null, actions);
 	}
 
-	public int setActive(Runnable onComplete, ActivityChangeAction... actions) {
-		int loadCount = populatePage();
-		scrollToVisible(Arrays.asList(actions).contains(ActivityChangeAction.ANIMATE), onComplete);
-		return loadCount;
+	public void setActive(final Runnable onComplete, final ActivityChangeAction... actions) {
+		Runnable action = new Runnable() {
+
+			@Override
+			public void run() {
+				populatePage();
+				scrollToVisible(Arrays.asList(actions).contains(ActivityChangeAction.ANIMATE), onComplete);
+			}
+			
+		};
+		if(Arrays.asList(actions).contains(ActivityChangeAction.CONCURRENT)) {
+			new Thread(action).start();	// Run on new thread.
+		} else {
+			action.run();	// Run on the current thread (often EDT).
+		}
 	}
 	
 	@Override
@@ -318,24 +329,4 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			}
 		}
 	}
-	
-	// TODO Debug: remove.
-//	private int calculateCellWidth(Container dimProvider) {
-//		int imagesWidth = COL_COUNT * ROW_COUNT;
-//		int tableWidth = RESULTS_TBL.getWidth();
-//		int spacingWidth = tableWidth - imagesWidth;
-//		int cellPadding = spacingWidth / STD_COL_COUNT;
-//		int cellWidth = cellPadding + STD_IMAGE_WIDTH;
-//		return cellWidth;
-//	}
-//	
-//	private int calculateCellHeight() {
-//		int imagesHeight = STD_ROW_COUNT * STD_IMAGE_WIDTH;
-//		int tableHeight = scrollPaneImageResults.getHeight();
-//		int spacingHeight = tableHeight - imagesHeight;
-//		int cellPadding = spacingHeight / STD_ROW_COUNT;
-//		int cellHeight = cellPadding + STD_IMAGE_HEIGHT;
-//		return cellHeight;
-//	}
-	
 }
