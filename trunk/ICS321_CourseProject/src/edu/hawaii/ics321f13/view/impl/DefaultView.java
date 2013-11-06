@@ -89,6 +89,7 @@ public class DefaultView extends JFrame implements View {
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
 	private final String ERROR_ICON_KEY = "OptionPane.errorIcon";
+	private final String INFO_ICON_KEY = "OptionPane.informationIcon";
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
 	// View components. 
@@ -419,8 +420,20 @@ public class DefaultView extends JFrame implements View {
 		imageSource = Objects.requireNonNull(source).traverser();
 		imageSourceTraversable = source;
 		clear();
-		currentPage = new DefaultResultsPage(
-				0, STD_ROW_COUNT, STD_COL_COUNT, imageSourceTraversable, LOADER, tblImageResults);
+		if(currentPage != null) {
+			try {
+				currentPage.close();
+			} catch (IOException e) {
+				throw new RuntimeException("an error occurred while closing page (IOException): " 
+						+ (e.getMessage() == null ? "<none>" : e.getMessage()));
+			}
+		}
+		if(imageSource.index() > 0 || imageSource.hasNext()) {
+			currentPage = new DefaultResultsPage(
+					0, STD_ROW_COUNT, STD_COL_COUNT, imageSourceTraversable, LOADER, tblImageResults);
+		} else {
+			currentPage = new EmptyResultSetPage("No results found", tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
+		}
 		currentPage.setActive();
 	}
 
@@ -549,6 +562,7 @@ public class DefaultView extends JFrame implements View {
 					rendererComp.setBackground(BG_UNSELECTED);
 					rendererComp.setForeground(FG_UNSELECTED);
 				}
+				// Set the value of the renderer component.
 				if(value instanceof Icon) {
 					rendererComp.setIcon((Icon) value);
 					rendererComp.setText("Error");
@@ -563,6 +577,12 @@ public class DefaultView extends JFrame implements View {
 						rendererComp.setIcon(UIManager.getIcon(ERROR_ICON_KEY));
 					}
 					rendererComp.setText(((ImageResult) value).getArticleTitle()); // TODO Truncate text if it is too long.
+				} else if(value instanceof String) {
+					rendererComp.setIcon(UIManager.getIcon(INFO_ICON_KEY));
+					rendererComp.setText((String) value);
+					// Also disable the selection highlighting.
+					rendererComp.setBackground(BG_UNSELECTED);
+					rendererComp.setForeground(FG_UNSELECTED);
 				} else {
 					rendererComp.setIcon(null);
 				}
