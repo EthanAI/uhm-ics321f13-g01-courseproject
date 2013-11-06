@@ -83,7 +83,8 @@ public class DefaultSearchableModel implements SearchableModel {
 		// Check if we know how to handle this query.
 		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
 			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-								" WHERE title LIKE '%" + key + "%'"; 
+								" WHERE title = '" + key + "'"; //strict matching. Few results, but pure. Maybe good for testing?
+								//" WHERE title LIKE '%" + key + "%'"; //loose matching. cat = catherine
 			System.out.println(SQL);
 			return executeQuery(SQL);
 		} else {
@@ -139,7 +140,7 @@ public class DefaultSearchableModel implements SearchableModel {
 	 */
 	private class ImageResultTraverser implements Traverser<ImageResult> {
 		
-		private final String URL_PREFIX = ""; // TODO Replace with real prefix.
+		private final String URL_PREFIX = "http://en.wikipedia.org/wiki/File:"; // TODO Replace with real prefix.
 		
 		private final ResultSet QUERY_RESULTS;
 		// Next retreival.
