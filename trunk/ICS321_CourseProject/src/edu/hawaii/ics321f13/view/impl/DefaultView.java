@@ -85,12 +85,14 @@ public class DefaultView extends JFrame implements View {
 	private BusyGlassPane busyPane = null;
 	private volatile boolean isLoading = false;
 	// View constants.
-	private final int STD_IMAGE_HEIGHT = 90;
-	private final int STD_IMAGE_WIDTH = 90;
+	private final int STD_IMAGE_HEIGHT = 105;
+	private final int STD_IMAGE_WIDTH = 85;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
 	private final String ERROR_ICON_KEY = "OptionPane.errorIcon";
 	private final String INFO_ICON_KEY = "OptionPane.informationIcon";
+	private final ImageTransformer THUMBNAIL_XFORM = 
+			new AggregateImageTransformer(new SizeNormalizationImageTransformer(STD_IMAGE_WIDTH, STD_IMAGE_HEIGHT));
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
 	// View components. 
@@ -187,11 +189,13 @@ public class DefaultView extends JFrame implements View {
 					currentPage = currentPage.previousPage();
 					btnNext.setEnabled(currentPage.hasNextPage());
 					btnPrevious.setEnabled(currentPage.hasPreviousPage());
+					setBusy(true);
 					currentPage.setActive(new Runnable() {
 
 						@Override
 						public void run() {
 							try {
+								setBusy(false);
 								PREV_PAGE.close();
 							} catch (IOException e) {
 								// Should never happen because default close implementation does not throw exception.
@@ -202,7 +206,7 @@ public class DefaultView extends JFrame implements View {
 							}
 						}
 						
-					});
+					}, ActivityChangeAction.CONCURRENT);
 				} else {
 					// Beep when the user tries to go past valid page range.
 					Toolkit.getDefaultToolkit().beep();
@@ -223,11 +227,13 @@ public class DefaultView extends JFrame implements View {
 					currentPage = currentPage.nextPage();
 					btnNext.setEnabled(currentPage.hasNextPage());
 					btnPrevious.setEnabled(currentPage.hasPreviousPage());
+					setBusy(true);
 					currentPage.setActive(new Runnable() {
 
 						@Override
 						public void run() {
 							try {
+								setBusy(false);
 								PREV_PAGE.close();
 							} catch (IOException e) {
 								// Should never happen because default close implementation does not throw exception.
@@ -238,7 +244,7 @@ public class DefaultView extends JFrame implements View {
 							}
 						}
 						
-					});
+					}, ActivityChangeAction.CONCURRENT);
 				} else {
 					// Beep when the user tries to go past valid page range.
 					Toolkit.getDefaultToolkit().beep();
@@ -388,7 +394,7 @@ public class DefaultView extends JFrame implements View {
 		tblImageResults.setDefaultRenderer(Object.class, new ImageTableCellRenderer(Color.WHITE, new Color(235, 235, 255), 
 				new Color(220, 220, 250), new Color(200, 200, 200), new Color(180, 180, 180), new Color(160, 160, 160), 
 				new Font("Segoe UI Light", Font.PLAIN, 15), new Font("Segoe UI Light", Font.PLAIN, 15), 
-				SwingConstants.CENTER, SwingConstants.CENTER));
+				SwingConstants.BOTTOM, SwingConstants.CENTER));
 		// Initial configuration of the data model.
 		imageResultsModel.setColumnCount(STD_COL_COUNT);
 		imageResultsModel.setRowCount(STD_ROW_COUNT);
@@ -436,6 +442,9 @@ public class DefaultView extends JFrame implements View {
 			currentPage = new EmptyResultSetPage("No results found", tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
 		}
 		setBusy(true);
+		// FIXME These lines cause traverser to go out of bounds. 
+//		btnNext.setEnabled(currentPage.hasNextPage());
+//		btnPrevious.setEnabled(currentPage.hasPreviousPage());
 		currentPage.setActive(new Runnable() {
 
 			@Override
@@ -580,7 +589,10 @@ public class DefaultView extends JFrame implements View {
 					rendererComp.setText("Error");
 				} else if(value instanceof ImageResult) {
 					try {
-						rendererComp.setIcon(new ImageIcon(((ImageResult) value).getImage()));
+						rendererComp.setIcon(
+								new ImageIcon(
+										((ImageResult) value).getImage(THUMBNAIL_XFORM)
+								));
 					} catch (IOException e) {
 						// Should not happen because the image loader removes images which fail to load from results.
 						rendererComp.setIcon(UIManager.getIcon(ERROR_ICON_KEY));
@@ -1073,7 +1085,7 @@ public class DefaultView extends JFrame implements View {
 			public void close() throws IOException {
 				image = null;
 			}
-			public BufferedImage getImage() {
+			public BufferedImage getImage(ImageTransformer...transformers) {
 				if(image == null) {
 					try {
 						image = ImageIO.read(new URL(
