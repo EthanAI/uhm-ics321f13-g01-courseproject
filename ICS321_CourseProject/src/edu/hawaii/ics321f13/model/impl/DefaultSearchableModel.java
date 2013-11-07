@@ -83,8 +83,8 @@ public class DefaultSearchableModel implements SearchableModel {
 		// Check if we know how to handle this query.
 		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
 			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-								" WHERE title = '" + key + "'"; //strict matching. Few results, but pure. Maybe good for testing?
-								//" WHERE title LIKE '%" + key + "%'"; //loose matching. cat = catherine
+								" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
+								//" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
 			System.out.println(SQL);
 			return executeQuery(SQL);
 		} else {

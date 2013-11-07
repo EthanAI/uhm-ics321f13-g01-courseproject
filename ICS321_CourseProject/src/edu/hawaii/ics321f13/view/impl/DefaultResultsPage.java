@@ -142,17 +142,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		// Configure the JTable: set column count.
 		final int colOffset = PAGE_IDX * COL_COUNT;
 		final DefaultTableModel resultsTblModel = (DefaultTableModel) RESULTS_TBL.getModel();
-		if(RESULTS_TBL.getColumnCount() < colOffset + COL_COUNT) {
-			resultsTblModel.setColumnCount(colOffset + COL_COUNT);
-		}
-		// Configure the JTable: set cell dimensions.
-		Dimension cellSize = calculateCellSize();
-		for(int i = 0; i < RESULTS_TBL.getColumnCount(); i++) {
-			RESULTS_TBL.getColumnModel().getColumn(i).setPreferredWidth(cellSize.width);
-			RESULTS_TBL.getColumnModel().getColumn(i).setWidth(cellSize.width);
-		}
-		resultsTblModel.setRowCount(ROW_COUNT);
-		RESULTS_TBL.setRowHeight(cellSize.height);
+		prepareTable();
 		// Populate the resultsPage: init listeners.
 		ImageLoadListener listener = new ImageLoadListener() {
 			final int UID = 10; // ID of 10 is only used by this method.
@@ -328,5 +318,21 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 								+ "Last valid result index: %d", index, RESULT_SRC.index()));
 			}
 		}
+	}
+	
+	private void prepareTable() {
+		final int colOffset = PAGE_IDX * COL_COUNT;
+		final DefaultTableModel resultsTblModel = (DefaultTableModel) RESULTS_TBL.getModel();
+		if(RESULTS_TBL.getColumnCount() < colOffset + COL_COUNT) {
+			resultsTblModel.setColumnCount(colOffset + COL_COUNT);
+		}
+		// Configure the JTable: set cell dimensions.
+		Dimension cellSize = calculateCellSize();
+		for(int i = 0; i < RESULTS_TBL.getColumnCount(); i++) {
+			RESULTS_TBL.getColumnModel().getColumn(i).setPreferredWidth(cellSize.width);
+			RESULTS_TBL.getColumnModel().getColumn(i).setWidth(cellSize.width);
+		}
+		resultsTblModel.setRowCount(ROW_COUNT);
+		RESULTS_TBL.setRowHeight(cellSize.height);
 	}
 }

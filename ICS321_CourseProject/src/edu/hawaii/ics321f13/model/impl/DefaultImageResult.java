@@ -1,6 +1,8 @@
 package edu.hawaii.ics321f13.model.impl;
 
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -14,6 +16,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
+import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 
 public class DefaultImageResult implements ImageResult {
 	
@@ -25,6 +28,8 @@ public class DefaultImageResult implements ImageResult {
 	private final String ARTICLE_ABSTRACT;
 	
 	private BufferedImage imageCache = null;
+	private BufferedImage xformsImageCache = null;
+	private ImageTransformer[] xformsCache = null;
 	
 	/**
 	 * Simplified constructor for DefaultImageResult class
@@ -57,6 +62,8 @@ public class DefaultImageResult implements ImageResult {
 		// metadata about the image which is stored in this class. So allow the image itself to be garbage-collected
 		// but keep the metadata alive. 
 		imageCache = null;
+		xformsImageCache = null;
+		xformsCache = null;
 	}
 	
 	/*
@@ -66,10 +73,9 @@ public class DefaultImageResult implements ImageResult {
 	 * @return A <code>BufferedImage</code> containing the image.
 	 */
 	@Override
-	public BufferedImage getImage() throws IOException { //throw IOExceptions for controller to handle
+	public BufferedImage getImage(ImageTransformer... transformers) throws IOException { //throw IOExceptions for controller to handle
 		if(imageCache == null) {
 			String imageUrlString;
-			System.out.println("Getting Image");
 			try { 
 				Document doc = Jsoup.connect(getImageURL().toString()).get(); //Jsoup closes its connection after it downloads the data
 				
@@ -91,7 +97,32 @@ public class DefaultImageResult implements ImageResult {
 				throw new IOException(e);
 			}
 		}
-		return imageCache;
+		// Now that we have the image itself, process any transformers.
+		if(transformers == null || transformers.length <= 0) {
+			return imageCache;
+		} else if(xformsImageCache == null || xformsCache == null || transformers.length != xformsCache.length) {
+			// If the cached transformer set is any different from the parameter set, recalculate the image composite.
+			xformsCache = transformers;
+			xformsImageCache = createComposite(imageCache, xformsCache);
+			return xformsImageCache;
+		} else {
+			// If they are generally similar, use equals() to differentiate between them.
+			boolean equivalent = true;
+			for(int i = 0; i < xformsCache.length; i++) {
+				if((xformsCache[i] == null && transformers[i] != null) 
+						|| (xformsCache[i] != null && transformers[i] == null) 
+						|| (xformsCache[i] != null && transformers[i] != null && !xformsCache[i].equals(transformers[i]))) {
+					equivalent = false;
+					break;
+				}
+			}
+			// Re-composite the image, if necessary.
+			if(!equivalent) {
+				xformsCache = transformers;
+				xformsImageCache = createComposite(imageCache, xformsCache);
+			}
+			return xformsImageCache;
+		}
 	}
 
 	/**
@@ -130,5 +161,20 @@ public class DefaultImageResult implements ImageResult {
 	@Override
 	public boolean isLoaded() {
 		return imageCache != null;
+	}
+	
+	private BufferedImage createComposite(BufferedImage source, ImageTransformer...transformers) {
+		BufferedImage copy = cloneImage(source);
+		for(int i = 0; i < transformers.length; i++) {
+			copy = transformers[i].createComposite(copy);
+		}
+		return copy;
+	}
+	
+	private BufferedImage cloneImage(BufferedImage source) {
+		ColorModel colorModel = source.getColorModel();
+		boolean premultipliedAlpha = source.isAlphaPremultiplied();
+		WritableRaster raster = source.copyData(null);
+		return new BufferedImage(colorModel, raster, premultipliedAlpha, null);
 	}
 }
