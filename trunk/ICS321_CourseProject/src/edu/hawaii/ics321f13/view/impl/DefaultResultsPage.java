@@ -131,12 +131,6 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	 * <code>resultSrc</code>.
 	 */
 	public int populatePage() {
-		// Parameter validation.
-		Objects.requireNonNull(RESULTS_TBL);
-		Objects.requireNonNull(RESULT_SRC);
-		if(!(RESULTS_TBL.getModel() instanceof DefaultTableModel)) {
-			throw new IllegalArgumentException("table model must subclass DefaultTableModel");
-		}
 		// Rewind/Fast-forward the Traverser.
 		setTraversableIndex(PAGE_START_IDX);
 		// Configure the JTable: set column count.
@@ -295,10 +289,13 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	}
 	
 	private void setTraversableIndex(int index) {
+		if(RESULT_SRC.index() == index) {
+			return;
+		}
 		boolean invalidPageIdx = false;
 		while(RESULT_SRC.index() != index) {
 			// Move the traverser cursor.
-			if(index - RESULT_SRC.index() > 0) {
+			if(RESULT_SRC.index() < index) {
 				if(RESULT_SRC.hasNext()) {
 					RESULT_SRC.next();
 				} else {

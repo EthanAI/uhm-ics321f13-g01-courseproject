@@ -40,6 +40,8 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.EventListenerList;
 
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
@@ -85,16 +87,17 @@ public class DefaultView extends JFrame implements View {
 	private BusyGlassPane busyPane = null;
 	private volatile boolean isLoading = false;
 	// View constants.
-	private final int STD_IMAGE_HEIGHT = 105;
-	private final int STD_IMAGE_WIDTH = 85;
+//	private final int STD_IMAGE_HEIGHT = 105;
+//	private final int STD_IMAGE_WIDTH = 85;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
+	private final int STD_TEXT_HEIGHT = 20;
+	private final double STD_PADDING_PERCENT = .06;
 	private final String ERROR_ICON_KEY = "OptionPane.errorIcon";
 	private final String INFO_ICON_KEY = "OptionPane.informationIcon";
-	private final ImageTransformer THUMBNAIL_XFORM = 
-			new AggregateImageTransformer(new SizeNormalizationImageTransformer(STD_IMAGE_WIDTH, STD_IMAGE_HEIGHT));
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
+	private ImageTransformer thumbnailXform = null;
 	// View components. 
 	private Point lastRolloverCell = null;
 	private JPanel contentPane;
@@ -180,6 +183,7 @@ public class DefaultView extends JFrame implements View {
 		btnPrevious = new MetroButton("\u2770", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnPrevious.setBackground(Color.WHITE);
+		btnPrevious.setEnabled(false); // Initially disabled because no results are displayed.
 		btnPrevious.addActionListener(new ActionListener() {
 
 			@Override
@@ -218,6 +222,7 @@ public class DefaultView extends JFrame implements View {
 		btnNext = new MetroButton("\u2771", new Font("Segoe UI Symbol", Font.PLAIN, 60), 
 				new Color(230, 230, 250), new Color(195, 195, 225), new Color(215, 215, 240));
 		btnNext.setBackground(Color.WHITE);
+		btnNext.setEnabled(false); // Initially disabled because no results are displayed.
 		btnNext.addActionListener(new ActionListener() {
 
 			@Override
@@ -412,9 +417,30 @@ public class DefaultView extends JFrame implements View {
 			
 		});
 		
+		addComponentListener(new ComponentAdapter() {
+			
+			@Override
+			public void componentResized(ComponentEvent e) {
+				if(currentPage != null) {
+					Dimension cellSize = new Dimension();
+					cellSize.width = scrollPaneImageResults.getWidth() / STD_COL_COUNT - 1;
+					cellSize.height = scrollPaneImageResults.getHeight() / STD_ROW_COUNT;
+					for(int i = 0; i < tblImageResults.getColumnCount(); i++) {
+						tblImageResults.getColumnModel().getColumn(i).setPreferredWidth(cellSize.width);
+						tblImageResults.getColumnModel().getColumn(i).setWidth(cellSize.width);
+					}
+					tblImageResults.setRowHeight(cellSize.height);
+					thumbnailXform = createThumbnailXform(cellSize, STD_TEXT_HEIGHT, STD_PADDING_PERCENT);
+					currentPage.scrollToVisible(false);
+				}
+			}
+			
+		});
+		
 		// Set up the Glass Pane.
 		busyPane = new BusyGlassPane(this);
 		setGlassPane(busyPane);
+		setLocationRelativeTo(null);
 	}
 
 	@Override
@@ -424,6 +450,13 @@ public class DefaultView extends JFrame implements View {
 
 	@Override
 	public void setImageSource(Traversable<ImageResult> source) {
+		if(thumbnailXform == null) {
+			// Setup the thumbnail image transformer.
+			Dimension cellSize = new Dimension();
+			cellSize.width = scrollPaneImageResults.getWidth() / STD_COL_COUNT - 1;
+			cellSize.height = scrollPaneImageResults.getHeight() / STD_ROW_COUNT;
+			thumbnailXform = createThumbnailXform(cellSize, STD_TEXT_HEIGHT, STD_PADDING_PERCENT);
+		}
 		imageSource = Objects.requireNonNull(source).traverser();
 		imageSourceTraversable = source;
 		clear();
@@ -442,9 +475,8 @@ public class DefaultView extends JFrame implements View {
 			currentPage = new EmptyResultSetPage("No results found", tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
 		}
 		setBusy(true);
-		// FIXME These lines cause traverser to go out of bounds. 
-//		btnNext.setEnabled(currentPage.hasNextPage());
-//		btnPrevious.setEnabled(currentPage.hasPreviousPage());
+		btnNext.setEnabled(currentPage.hasNextPage());
+		btnPrevious.setEnabled(currentPage.hasPreviousPage());
 		currentPage.setActive(new Runnable() {
 
 			@Override
@@ -493,6 +525,12 @@ public class DefaultView extends JFrame implements View {
 	@Override
 	public void clearImageTransformers() {
 		imageTransformers.clear();
+	}
+	
+	private ImageTransformer createThumbnailXform(Dimension cellSize, int textHeight, double paddingPercent) {
+		int imageWidth = cellSize.width - (int) (paddingPercent * cellSize.width * 2.0);
+		int imageHeight = cellSize.height - textHeight - (int) (paddingPercent * cellSize.height * 2.0);
+		return new AggregateImageTransformer(new SizeNormalizationImageTransformer(imageWidth, imageHeight));
 	}
 	
 	private void fireActionPerformed(int id, String command) {
@@ -591,7 +629,7 @@ public class DefaultView extends JFrame implements View {
 					try {
 						rendererComp.setIcon(
 								new ImageIcon(
-										((ImageResult) value).getImage(THUMBNAIL_XFORM)
+										((ImageResult) value).getImage(thumbnailXform)
 								));
 					} catch (IOException e) {
 						// Should not happen because the image loader removes images which fail to load from results.
