@@ -83,8 +83,8 @@ public class DefaultSearchableModel implements SearchableModel {
 		// Check if we know how to handle this query.
 		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
 			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-								" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
-								//" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
+								//" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
+								" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
 			System.out.println(SQL);
 			return executeQuery(SQL);
 		} else {
@@ -143,6 +143,7 @@ public class DefaultSearchableModel implements SearchableModel {
 		private final String URL_PREFIX = "http://en.wikipedia.org/wiki/File:"; // TODO Replace with real prefix.
 		
 		private final ResultSet QUERY_RESULTS;
+		private int lastIdx = -1;
 		// Next retreival.
 		private boolean hasNext = false;
 		private boolean nextQueried = false;
@@ -168,6 +169,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			// If there were no more results last time, skip this section and return that there are still no results.
 			if(!nextQueried) {
 				try {
+					lastIdx = QUERY_RESULTS.getRow() - 1;
 					hasNext = QUERY_RESULTS.next();	// Move cursor back one element.
 					nextQueried = true;				// State of the next value is now known.
 					previousQueried = false;		// State of the previous value is now unknown.
@@ -265,10 +267,14 @@ public class DefaultSearchableModel implements SearchableModel {
 		@Override
 		public int index() {
 			try {
-				// Must subtract 1 to convert from a one-based row index to a zero-based index and to support the
-				// requirement that a value of -1 is returned before next() has ever been called on the current
-				// ResultSet object.
-				return QUERY_RESULTS.getRow() - 1;
+				if(QUERY_RESULTS.isAfterLast()) {
+					return lastIdx + 1;
+				} else {
+					// Must subtract 1 to convert from a one-based row index to a zero-based index and to support the
+					// requirement that a value of -1 is returned before next() has ever been called on the current
+					// ResultSet object.
+					return QUERY_RESULTS.getRow() - 1;
+				}
 			} catch (SQLException e) {
 				throw new RuntimeException("SQLException occurred while retrieving row index: " 
 						+ e.getMessage(), e);
