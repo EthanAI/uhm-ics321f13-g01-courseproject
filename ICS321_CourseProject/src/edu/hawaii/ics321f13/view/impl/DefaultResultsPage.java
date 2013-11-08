@@ -40,6 +40,8 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	private boolean previousPageQueried = false;
 	private ResultsPage<ImageResult> nextPage = null;
 	private boolean nextPageQueried = false;
+	// Page state.
+	private boolean isOpen = false;
 	
 	public DefaultResultsPage(int pageIdx, int rowCount, int colCount, 
 			Traversable<ImageResult> resultSrc, ImageLoader resultsLoader, JTable resultsTbl) {
@@ -188,6 +190,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		int loadCount = LOADER.loadImages(RESULT_SRC_TRAVERSABLE, (ROW_COUNT * COL_COUNT));
 		// Once we have the image results, we don't need the listener anymore.
 		LOADER.removeImageLoadListener(listener);
+		isOpen = true;
 		return loadCount;
 	}
 	
@@ -254,6 +257,10 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 
 	@Override
 	public void close() {
+		if(!isOpen) {
+			return;
+		}
+		isOpen = false;
 		// Clear the table cells.
 		int columnOffset = PAGE_IDX * COL_COUNT;
 		for(int row = 0; row < ROW_COUNT; row++) {
@@ -262,7 +269,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			}
 		}
 		// Close the ImageResult objects.
-		setTraversableIndex(PAGE_START_IDX - 1);
+		setTraversableIndex(PAGE_START_IDX);
 		for(int i = 0; i < (ROW_COUNT * COL_COUNT) && RESULT_SRC.hasNext(); i++) {
 			try {
 				RESULT_SRC.next().close();
