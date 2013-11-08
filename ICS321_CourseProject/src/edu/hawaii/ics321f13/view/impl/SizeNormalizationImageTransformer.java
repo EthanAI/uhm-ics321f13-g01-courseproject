@@ -15,14 +15,15 @@ public class SizeNormalizationImageTransformer extends AbstractImageTransformer 
 	
 	@Override
 	public BufferedImage createComposite(BufferedImage source) {
-		int width, height;
-		if(WIDTH != HEIGHT) {
-			width = (WIDTH < HEIGHT ? WIDTH : -1);
-			height = (WIDTH < HEIGHT ? -1 : HEIGHT);
-		} else {
-			System.out.println("Square");
-			width = (source.getWidth() <= source.getHeight() ? WIDTH : -1);
-			height = (source.getWidth() <= source.getHeight() ? -1 : HEIGHT);
+		int width = source.getWidth();
+		int height = source.getHeight();
+		if(width > WIDTH) {
+			width = WIDTH;
+			height = (width * source.getHeight()) / source.getWidth();
+		}
+		if(height > HEIGHT) {
+			height = HEIGHT;
+			width = (height * source.getWidth()) / source.getHeight();
 		}
 		Image scaled = source.getScaledInstance(width,	height, BufferedImage.SCALE_SMOOTH);
 		BufferedImage bufScaled = 
@@ -30,7 +31,7 @@ public class SizeNormalizationImageTransformer extends AbstractImageTransformer 
 		bufScaled.getGraphics().drawImage(scaled, 0, 0, null);
 		return bufScaled;
 	}
-	
+	 
 	@Override
 	public boolean equals(Object other) {
 		if(other instanceof SizeNormalizationImageTransformer) {
