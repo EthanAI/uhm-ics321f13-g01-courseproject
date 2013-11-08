@@ -1,5 +1,6 @@
 package edu.hawaii.ics321f13.model.interfaces;
 
+import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,7 +12,11 @@ public interface ImageResult extends Closeable {
 	
 	BufferedImage getImage(ImageTransformer... transformers) throws IOException;
 	
+	BufferedImage getImage(Dimension targetSize, ImageTransformer...transformers) throws IOException;
+	
 	URL getImageURL();
+	
+	URL getImageURL(Dimension targetSize);
 	
 	String getArticleTitle();
 	

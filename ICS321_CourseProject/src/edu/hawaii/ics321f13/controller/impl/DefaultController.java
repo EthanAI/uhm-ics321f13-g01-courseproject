@@ -6,6 +6,9 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Objects;
 
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
 import edu.hawaii.ics321f13.model.interfaces.DataModelFactory;
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;

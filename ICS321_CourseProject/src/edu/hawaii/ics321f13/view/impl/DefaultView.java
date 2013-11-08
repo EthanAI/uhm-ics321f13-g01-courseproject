@@ -5,6 +5,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.KeyEventDispatcher;
@@ -57,6 +58,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -87,8 +89,6 @@ public class DefaultView extends JFrame implements View {
 	private BusyGlassPane busyPane = null;
 	private volatile boolean isLoading = false;
 	// View constants.
-//	private final int STD_IMAGE_HEIGHT = 105;
-//	private final int STD_IMAGE_WIDTH = 85;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
 	private final int STD_TEXT_HEIGHT = 20;
@@ -161,6 +161,14 @@ public class DefaultView extends JFrame implements View {
 				new Color(192, 192, 192), new Color(192, 192, 192), new Color(160, 160, 160), 
 				Color.WHITE, Color.LIGHT_GRAY, Color.WHITE, 
 				new Color(192, 192, 192), new Color(175, 175, 175), new Color(160, 160, 160));
+		txtSearchField.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				search(txtSearchField.getText());
+			}
+			
+		});
 		
 		// To use GUI editor, comment out this block.
 		// START BLOCK
@@ -171,11 +179,7 @@ public class DefaultView extends JFrame implements View {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				clear();
-				// Searching for an empty string should yield an empty result set.
-				if(!txtSearchField.getText().trim().isEmpty()) {
-					fireActionPerformed(ViewEventType.QUERY.getID(), txtSearchField.getText().trim());
-				}
+				search(txtSearchField.getText());
 			}
 			
 		});
@@ -188,6 +192,11 @@ public class DefaultView extends JFrame implements View {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				// Ignore invalid button presses (should not happen).
+				if(currentPage == null) {
+					return;
+				}
+				// Go to the previous page.
 				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
 				if(currentPage.hasPreviousPage()) {
 					currentPage = currentPage.previousPage();
@@ -227,6 +236,11 @@ public class DefaultView extends JFrame implements View {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				// Ignore invalid button presses (should not happen).
+				if(currentPage == null) {
+					return;
+				}
+				// Go to the next page.
 				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
 				if(currentPage.hasNextPage()) {
 					currentPage = currentPage.nextPage();
@@ -266,7 +280,12 @@ public class DefaultView extends JFrame implements View {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JOptionPane.showMessageDialog(DefaultView.this, "Credit: Ethan, Kyle, and Nathan", 
+				String text = "Credit: Ethan, Kyle, Nathan"
+						+ "\nTools/Utilities: Eclipse, JDBC, MySQL, Wikipedia"
+						+ "\n"
+						+ "\nProject Repository: https://code.google.com/p/uhm-ics321f13-g01-courseproject/"
+						+ "\n ";
+				JOptionPane.showMessageDialog(DefaultView.this, text, 
 						"Wiki Images Info", JOptionPane.INFORMATION_MESSAGE);
 			}
 			
@@ -356,6 +375,22 @@ public class DefaultView extends JFrame implements View {
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				tblImageResults.clearSelection();
+				if(e.getButton() == 1 && e.getClickCount() % 2 == 0) {
+					int row = tblImageResults.rowAtPoint(e.getPoint());
+					int col = tblImageResults.columnAtPoint(e.getPoint());
+					if(row >= 0 && row < tblImageResults.getRowCount() 
+							&& col >= 0 && col < tblImageResults.getColumnCount()
+							&& tblImageResults.getValueAt(row, col) instanceof ImageResult) {
+						URL imageUrl = ((ImageResult) tblImageResults.getValueAt(row, col)).getImageURL();
+						if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+							try {
+								Desktop.getDesktop().browse(imageUrl.toURI());
+							} catch (IOException | URISyntaxException e1) {
+								// TODO Display the image locally.
+							}
+						}
+					}
+				}
 			}
 			
 			@Override
@@ -457,9 +492,6 @@ public class DefaultView extends JFrame implements View {
 			cellSize.height = scrollPaneImageResults.getHeight() / STD_ROW_COUNT;
 			thumbnailXform = createThumbnailXform(cellSize, STD_TEXT_HEIGHT, STD_PADDING_PERCENT);
 		}
-		imageSource = Objects.requireNonNull(source).traverser();
-		imageSourceTraversable = source;
-		clear();
 		if(currentPage != null) {
 			try {
 				currentPage.close();
@@ -468,6 +500,9 @@ public class DefaultView extends JFrame implements View {
 						+ (e.getMessage() == null ? "<none>" : e.getMessage()));
 			}
 		}
+		imageSource = Objects.requireNonNull(source).traverser();
+		imageSourceTraversable = source;
+		clear();
 		if(imageSource.index() > 0 || imageSource.hasNext()) {
 			currentPage = new DefaultResultsPage(
 					0, STD_ROW_COUNT, STD_COL_COUNT, imageSourceTraversable, LOADER, tblImageResults);
@@ -525,6 +560,15 @@ public class DefaultView extends JFrame implements View {
 	@Override
 	public void clearImageTransformers() {
 		imageTransformers.clear();
+	}
+	
+	private String currentSearchText = "";
+	private void search(String text) {
+		text = text.trim();
+		if(!text.equals(currentSearchText) && !text.isEmpty()) {
+			currentSearchText = text;
+			fireActionPerformed(ViewEventType.QUERY.getID(), txtSearchField.getText().trim());
+		}
 	}
 	
 	private ImageTransformer createThumbnailXform(Dimension cellSize, int textHeight, double paddingPercent) {
@@ -629,7 +673,9 @@ public class DefaultView extends JFrame implements View {
 					try {
 						rendererComp.setIcon(
 								new ImageIcon(
-										((ImageResult) value).getImage(thumbnailXform)
+										((ImageResult) value).getImage(
+												table.getCellRect(row, column, false).getSize(), 
+												thumbnailXform)
 								));
 					} catch (IOException e) {
 						// Should not happen because the image loader removes images which fail to load from results.
@@ -891,7 +937,7 @@ public class DefaultView extends JFrame implements View {
 
 				@Override
 				public boolean dispatchKeyEvent(KeyEvent e) {
-					if(!e.isConsumed() && e.getKeyCode() == KeyEvent.VK_ENTER) {
+					if(hasFocus() && !e.isConsumed() && e.getKeyCode() == KeyEvent.VK_ENTER) {
 						if(e.getID() == KeyEvent.KEY_PRESSED && e.isAltDown()) {
 							setSelected(true);
 							e.consume();
@@ -1123,7 +1169,12 @@ public class DefaultView extends JFrame implements View {
 			public void close() throws IOException {
 				image = null;
 			}
-			public BufferedImage getImage(ImageTransformer...transformers) {
+			public BufferedImage getImage(ImageTransformer...transformers) throws IOException {
+				return getImage(null, transformers);
+			}
+			@Override
+			public BufferedImage getImage(Dimension targetSize,
+					ImageTransformer... transformers) throws IOException {
 				if(image == null) {
 					try {
 						image = ImageIO.read(new URL(
@@ -1135,6 +1186,10 @@ public class DefaultView extends JFrame implements View {
 				return image;
 			}
 			public URL getImageURL() {return null;}
+			@Override
+			public URL getImageURL(Dimension targetSize) {
+				return null;
+			}
 			public String getArticleTitle() {
 				return title;
 			} 
