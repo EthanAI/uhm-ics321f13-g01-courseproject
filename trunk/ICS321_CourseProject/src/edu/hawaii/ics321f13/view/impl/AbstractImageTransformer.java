@@ -1,7 +1,5 @@
 package edu.hawaii.ics321f13.view.impl;
 
-import java.awt.image.BufferedImage;
-
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 
 public abstract class AbstractImageTransformer implements ImageTransformer {

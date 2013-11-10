@@ -1,7 +1,6 @@
 package edu.hawaii.ics321f13.view.interfaces;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 public interface ResultsPage<E> extends Comparable<ResultsPage<E>>, Closeable {
 	

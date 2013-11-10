@@ -2,12 +2,8 @@ package edu.hawaii.ics321f13.controller.impl;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Objects;
-
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
 import edu.hawaii.ics321f13.model.interfaces.DataModelFactory;
@@ -17,8 +13,8 @@ import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.SearchableModel;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
-import edu.hawaii.ics321f13.view.impl.ViewEventType;
 import edu.hawaii.ics321f13.view.interfaces.View;
+import edu.hawaii.ics321f13.view.interfaces.View.ViewEventType;
 import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
 
 /**
@@ -30,7 +26,7 @@ import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
  */
 public class DefaultController implements Controller<ImageResult> {
 	
-	// Default mysql port.
+	// MySQL port info.
 	private static final int DEFAULT_PORT = 3306;
 	private static final int MAX_PORT = 65535;
 	private static final int MIN_PORT = 1;
@@ -40,6 +36,8 @@ public class DefaultController implements Controller<ImageResult> {
 	// Program components.
 	private final SearchableModel MODEL;			// Application data model.
 	private final View VIEW;						// Main user-facing GUI.
+	// State variables.
+	private ResultConstraint currentConstraint = ResultConstraint.CONTAINS;
 	
 	/**
 	 * Creates a new <code>DefaultController</code> instance, prompting the user for the required login credentials.
@@ -90,6 +88,8 @@ public class DefaultController implements Controller<ImageResult> {
 					VIEW.setImageSource(queryResults);
 				} else if(e.getID() == ViewEventType.CLOSE.getID()) {
 					onClose();
+				} else if(e.getID() == ViewEventType.RESULT_CONSTRAINT.getID()) {
+					currentConstraint = ResultConstraint.valueOf(e.getActionCommand());
 				} else {
 					throw new UnsupportedOperationException(
 							String.format("unsupported message type received from view: %s (event ID: $d)", 
@@ -101,14 +101,14 @@ public class DefaultController implements Controller<ImageResult> {
 		});
 	}
 	
-	/*
+	/**
 	 * Searches the database held by the <code>Model</code> for images related to a topic. 
 	 * 
 	 * @param searchTerm is a string of the topic the user wants pictures of
 	 */
 	@Override
 	public Traversable<ImageResult> onQuery(String searchTerm) {
-		return MODEL.search(searchTerm, ImageResult.class, ResultConstraint.CONTAINS);
+		return MODEL.search(searchTerm, ImageResult.class, currentConstraint);
 	}
 
 	@Override

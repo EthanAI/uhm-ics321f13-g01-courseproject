@@ -1,7 +1,6 @@
 package edu.hawaii.ics321f13.view.impl;
 
 import java.io.IOException;
-
 import edu.hawaii.ics321f13.model.interfaces.LoginInfo;
 import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
 import edu.hawaii.ics321f13.view.interfaces.View;
@@ -9,7 +8,7 @@ import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
 
 public class DefaultViewFactory implements ViewFactory {
 
-	/*
+	/**
 	 * Constructor uses the <code>SynchronousImageLoader</code> to generate the <code>DefaultView</code>
 	 */
 	@Override
@@ -19,13 +18,14 @@ public class DefaultViewFactory implements ViewFactory {
 		return view;
 	}
 	
-	/*
+	/**
 	 * Creates the <code>LoginPrompt</code>
 	 * @return <code>LoginPrompt</code>
 	 */
 	@Override
 	public LoginPrompt createLoginPrompt() {
-		// TODO Debug: placeholder dummy code.
+		//return new LoginDialog(); // FIXME Totally broken under concurrency.
+		// TODO Replace with LoginDialog.
 		return new LoginPrompt() {
 
 			@Override
@@ -34,8 +34,7 @@ public class DefaultViewFactory implements ViewFactory {
 
 					@Override
 					public void close() throws IOException {
-						// TODO Auto-generated method stub
-						
+						// Do nothing.
 					}
 
 					@Override

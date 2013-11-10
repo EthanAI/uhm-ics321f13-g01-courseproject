@@ -66,6 +66,7 @@ import java.util.Objects;
 import javax.swing.ScrollPaneConstants;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
+import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
@@ -310,6 +311,33 @@ public class DefaultView extends JFrame implements View {
 		lblTitle.setForeground(SystemColor.activeCaption);
 		lblTitle.setFont(new Font("Segoe UI Light", Font.PLAIN, 50));
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
+		lblTitle.addMouseListener(new MouseAdapter() {
+			// TODO For demo only: remove.
+			private boolean strictConstraint = false;
+			
+			@Override
+			public void mouseReleased(MouseEvent evt) {
+				// TODO This is an escape hatch for the demo. Remove this in the production build.
+				if(evt.getClickCount() % 2 == 0 && evt.isAltDown()) {
+					if(currentPage != null) {
+						try {
+							currentPage.close();
+						} catch (IOException e) {
+							throw new RuntimeException(
+									"an error occurred while closing results page: " + e.getMessage(), e);
+						}
+					}
+					strictConstraint = !strictConstraint;
+					fireActionPerformed(ViewEventType.RESULT_CONSTRAINT.getID(), 
+							(strictConstraint ? ResultConstraint.EQUALS : ResultConstraint.CONTAINS).toString());
+					currentPage = new EmptyResultSetPage(
+							(strictConstraint ? "Strict" : "Loose") + " result filtering is active", 
+							tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
+					currentPage.setActive();
+				}
+			}
+			
+		});
 		
 		GroupLayout gl_panelControls = new GroupLayout(panelControls);
 		gl_panelControls.setHorizontalGroup(
