@@ -18,17 +18,18 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.locks.ReentrantLock;
-
 import javax.swing.JButton;
 import javax.swing.JTextField;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.LayoutStyle.ComponentPlacement;
 
 public class LoginDialog extends JDialog implements LoginPrompt {
 	
 	/** Serialization support */
 	private static final long serialVersionUID = 1L;
 	// Synchronization constants.
-	private final ReentrantLock LOCK = new ReentrantLock(true);
+	private final Semaphore LOCK = new Semaphore(1, true);
 	// UI components. 
 	private JPasswordField passwordField;
 	private JTextField usernameField;
@@ -38,31 +39,24 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	 * Constructor for the <code>LoginDialog</code>
 	 */
 	public LoginDialog() {
-		LOCK.lock(); // Acquire here to prevent other threads from acquiring after construction.
-		setTitle("Login Dialog");
-		getContentPane().setLayout(null);
+		setResizable(false);
+		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		LOCK.acquireUninterruptibly(); // Acquire here to prevent other threads from acquiring after construction.
+		setTitle("Login");
 		
 		JLabel lblUsernameTitle = new JLabel("Username:");
 		lblUsernameTitle.setForeground(SystemColor.activeCaption);
 		lblUsernameTitle.setFont(new Font("Segoe UI", Font.PLAIN, 25));
-		lblUsernameTitle.setBounds(10, 67, 126, 34);
-		getContentPane().add(lblUsernameTitle);
 		
 		usernameField = new JTextField();
 		usernameField.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 11));
-		usernameField.setBounds(139, 67, 285, 33);
-		getContentPane().add(usernameField);
 		usernameField.setColumns(10);
 		
 		JLabel lblPasswordTitle = new JLabel("Password:");
 		lblPasswordTitle.setForeground(SystemColor.activeCaption);
 		lblPasswordTitle.setFont(new Font("Segoe UI", Font.PLAIN, 25));
-		lblPasswordTitle.setBounds(10, 123, 126, 34);
-		getContentPane().add(lblPasswordTitle);
 		
 		passwordField = new JPasswordField();
-		passwordField.setBounds(131, 129, 215, 27);
-		getContentPane().add(passwordField);
 		
 		JButton button = new JButton("\u2794");
 		button.setActionCommand("Enter");
@@ -70,9 +64,51 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		button.setBorder(null);
 		button.setBackground(Color.WHITE);
 		button.setForeground(Color.LIGHT_GRAY);
-		button.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 40));
-		button.setBounds(361, 119, 63, 44);
-		getContentPane().add(button);
+		button.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 75));
+		
+		JLabel lblNewLabel = new JLabel("Enter database login credentals:");
+		lblNewLabel.setFont(new Font("Segoe UI Light", Font.PLAIN, 20));
+		GroupLayout groupLayout = new GroupLayout(getContentPane());
+		groupLayout.setHorizontalGroup(
+			groupLayout.createParallelGroup(Alignment.LEADING)
+				.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+					.addContainerGap()
+					.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+						.addComponent(lblNewLabel, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 490, Short.MAX_VALUE)
+						.addGroup(groupLayout.createSequentialGroup()
+							.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+								.addComponent(lblPasswordTitle, GroupLayout.PREFERRED_SIZE, 126, GroupLayout.PREFERRED_SIZE)
+								.addComponent(lblUsernameTitle, GroupLayout.PREFERRED_SIZE, 126, GroupLayout.PREFERRED_SIZE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+								.addComponent(usernameField, GroupLayout.DEFAULT_SIZE, 264, Short.MAX_VALUE)
+								.addComponent(passwordField, GroupLayout.DEFAULT_SIZE, 264, Short.MAX_VALUE))
+							.addPreferredGap(ComponentPlacement.RELATED)
+							.addComponent(button, GroupLayout.PREFERRED_SIZE, 90, GroupLayout.PREFERRED_SIZE)))
+					.addContainerGap())
+		);
+		groupLayout.setVerticalGroup(
+			groupLayout.createParallelGroup(Alignment.LEADING)
+				.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+					.addContainerGap()
+					.addComponent(lblNewLabel, GroupLayout.PREFERRED_SIZE, 55, GroupLayout.PREFERRED_SIZE)
+					.addPreferredGap(ComponentPlacement.UNRELATED)
+					.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+						.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+							.addGap(10)
+							.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING, false)
+								.addComponent(lblUsernameTitle, 0, 0, Short.MAX_VALUE)
+								.addComponent(usernameField, GroupLayout.PREFERRED_SIZE, 33, GroupLayout.PREFERRED_SIZE))
+							.addGap(19)
+							.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblPasswordTitle)
+								.addComponent(passwordField, GroupLayout.DEFAULT_SIZE, 34, Short.MAX_VALUE)))
+						.addGroup(groupLayout.createSequentialGroup()
+							.addComponent(button)
+							.addPreferredGap(ComponentPlacement.RELATED, 1, GroupLayout.PREFERRED_SIZE)))
+					.addContainerGap())
+		);
+		getContentPane().setLayout(groupLayout);
 		
 		addWindowListener(new WindowAdapter() {
 			
@@ -90,15 +126,9 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				setVisible(false);
-				LOCK.unlock();
+				LOCK.release();
 			}
 		});
-		// Since the LoginPrompt is abstracted from any visual representation, the caller is freed from the 
-		// responsibility of managing this view's visibility explicitly. That implies that the contract to which this
-		// view must adhere is that it will manage its own visiblity in some logical manner that supports the
-		// functionallity required by the LoginPrompt interface. 
-		// So, in short, we need to make the dialog visible here and hide it when the user submits the credentials.
-		setVisible(true);
 	}
 	
 	/*
@@ -111,8 +141,8 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 			// Ignore interrupted exceptions because it is unacceptable for this method to return spuriously(randomly).
 			// The contract of this method is that it will only return after the user has clicked "OK", otherwise
 			// the thread is disabled for thread-scheduling purposes.
-			LOCK.lock();
-			LOCK.unlock(); // Unlock the lock to allow other threads to retreive login info.
+			LOCK.acquireUninterruptibly();
+			LOCK.release(); // Unlock the lock to allow other threads to retreive login info.
 		}
 		return new DefaultLoginInfo(usernameField.getText(), passwordField.getPassword());
 	}

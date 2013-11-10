@@ -28,6 +28,10 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 		if(!(RESULTS_TBL.getModel() instanceof DefaultTableModel)) {
 			throw new IllegalArgumentException("table model must inherit from DefaultTableModel");
 		}
+		if(ROW_COUNT < 0 || COL_COUNT < 0) {
+			throw new IllegalArgumentException(
+					String.format("invalid number of rows/columns [rows=%d, columns=%d]", ROW_COUNT, COL_COUNT));
+		}
 	}
 	
 	@Override

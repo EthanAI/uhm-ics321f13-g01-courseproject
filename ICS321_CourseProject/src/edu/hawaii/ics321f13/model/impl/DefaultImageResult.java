@@ -6,12 +6,9 @@ import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URL;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.Callable;
-
 import javax.imageio.ImageIO;
 
 import org.jsoup.Jsoup;

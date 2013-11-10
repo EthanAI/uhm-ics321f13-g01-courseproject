@@ -36,7 +36,7 @@ public class ProjectMain {
 	private static void init() {
 		ViewFactory defaultViewFactory = new DefaultViewFactory();
 		DataModelFactory defaultDataModelFactory = new DefaultDataModelFactory();
-		Controller defaultCtrlr = new DefaultController(defaultDataModelFactory, defaultViewFactory);
+		new DefaultController(defaultDataModelFactory, defaultViewFactory); // RAII.
 	}
 
 }

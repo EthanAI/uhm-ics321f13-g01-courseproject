@@ -81,11 +81,17 @@ public class DefaultSearchableModel implements SearchableModel {
 			throw new IllegalArgumentException("key must not be empty");
 		}
 		// Check if we know how to handle this query.
-		if(resultType.equals(ImageResult.class) && constraint.equals(ResultConstraint.CONTAINS)) {
-			final String SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-								//" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
-								" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
-			System.out.println(SQL);
+		String SQL = null;
+		if(resultType.equals(ImageResult.class)) {
+			if(constraint.equals(ResultConstraint.CONTAINS)) {
+				SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
+						" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
+			} else if(constraint.equals(ResultConstraint.EQUALS)) {
+				SQL = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
+						" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
+			}
+		}
+		if(SQL != null) {
 			return executeQuery(SQL);
 		} else {
 			throw new UnsupportedOperationException("unsupported query result type/constraint combination");

@@ -3,13 +3,11 @@ package edu.hawaii.ics321f13.view.impl;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.UIManager;
