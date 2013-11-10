@@ -46,6 +46,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -99,6 +100,7 @@ public class DefaultView extends JFrame implements View {
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
 	private ImageTransformer thumbnailXform = null;
+	private String formattedSearchFieldTooltip = "SELECT * FROM test_table_1 WHERE title = '%s'";	// TODO For demo only: remove.
 	// View components. 
 	private Point lastRolloverCell = null;
 	private JPanel contentPane;
@@ -167,6 +169,15 @@ public class DefaultView extends JFrame implements View {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				search(txtSearchField.getText());
+			}
+			
+		});
+		// TODO For demo only: remove.
+		txtSearchField.addKeyListener(new KeyAdapter() {
+			
+			@Override
+			public void keyReleased(KeyEvent evt) {
+				txtSearchField.setToolTipText(String.format(formattedSearchFieldTooltip, txtSearchField.getText()));
 			}
 			
 		});
@@ -328,6 +339,7 @@ public class DefaultView extends JFrame implements View {
 						}
 					}
 					strictConstraint = !strictConstraint;
+					formattedSearchFieldTooltip = "SELECT * FROM test_table_1 WHERE title " + (strictConstraint ? "LIKE '%%%s%%'" : "= '%s'");
 					fireActionPerformed(ViewEventType.RESULT_CONSTRAINT.getID(), 
 							(strictConstraint ? ResultConstraint.EQUALS : ResultConstraint.CONTAINS).toString());
 					currentPage = new EmptyResultSetPage(
