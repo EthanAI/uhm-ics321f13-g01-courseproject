@@ -100,7 +100,6 @@ public class DefaultView extends JFrame implements View {
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
 	private ImageTransformer thumbnailXform = null;
-	private String formattedSearchFieldTooltip = "SELECT * FROM test_table_1 WHERE title = '%s'";	// TODO For demo only: remove.
 	// View components. 
 	private Point lastRolloverCell = null;
 	private JPanel contentPane;
@@ -169,15 +168,6 @@ public class DefaultView extends JFrame implements View {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				search(txtSearchField.getText());
-			}
-			
-		});
-		// TODO For demo only: remove.
-		txtSearchField.addKeyListener(new KeyAdapter() {
-			
-			@Override
-			public void keyReleased(KeyEvent evt) {
-				txtSearchField.setToolTipText(String.format(formattedSearchFieldTooltip, txtSearchField.getText()));
 			}
 			
 		});
@@ -322,35 +312,7 @@ public class DefaultView extends JFrame implements View {
 		lblTitle.setForeground(SystemColor.activeCaption);
 		lblTitle.setFont(new Font("Segoe UI Light", Font.PLAIN, 50));
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
-		lblTitle.addMouseListener(new MouseAdapter() {
-			// TODO For demo only: remove.
-			private boolean strictConstraint = false;
-			
-			@Override
-			public void mouseReleased(MouseEvent evt) {
-				// TODO This is an escape hatch for the demo. Remove this in the production build.
-				if(evt.getClickCount() % 2 == 0 && evt.isAltDown()) {
-					if(currentPage != null) {
-						try {
-							currentPage.close();
-						} catch (IOException e) {
-							throw new RuntimeException(
-									"an error occurred while closing results page: " + e.getMessage(), e);
-						}
-					}
-					strictConstraint = !strictConstraint;
-					formattedSearchFieldTooltip = "SELECT * FROM test_table_1 WHERE title " + (strictConstraint ? "LIKE '%%%s%%'" : "= '%s'");
-					fireActionPerformed(ViewEventType.RESULT_CONSTRAINT.getID(), 
-							(strictConstraint ? ResultConstraint.EQUALS : ResultConstraint.CONTAINS).toString());
-					currentPage = new EmptyResultSetPage(
-							(strictConstraint ? "Strict" : "Loose") + " result filtering is active", 
-							tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
-					currentPage.setActive();
-				}
-			}
-			
-		});
-		
+
 		GroupLayout gl_panelControls = new GroupLayout(panelControls);
 		gl_panelControls.setHorizontalGroup(
 			gl_panelControls.createParallelGroup(Alignment.LEADING)
