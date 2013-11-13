@@ -20,6 +20,8 @@ import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
 
+
+
 public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	
 	// Page data.
@@ -41,6 +43,17 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	// Page state.
 	private boolean isOpen = false;
 	
+	
+	/**
+	 * Creates a new <code>DefaultResultsPage</code> instance
+	 * 
+	 * @param pageIdx - the pageIdx is used to keep track on the pages
+	 * @param rowCount - the rowCount is used to keep track of the row
+	 * @param colCount - the colCount is used to keep track on the column
+	 * @param resultSrc - the <code>Traversable</code> instance which will be used to initialize a new <code>Traverser</code> instance.
+	 * @param resultsLoader - the <code>ImageLoader</code> instance which will be used to instantiate all the load listeners ie: addImageLoaderListener, removeImageLoaderListener.
+	 * @param resultsTble - Creates the table where the results get displayed.
+	 */ 
 	public DefaultResultsPage(int pageIdx, int rowCount, int colCount, 
 			Traversable<ImageResult> resultSrc, ImageLoader resultsLoader, JTable resultsTbl) {
 		PAGE_IDX = pageIdx;
@@ -71,11 +84,21 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		this(pageIdx, model.ROW_COUNT, model.COL_COUNT, model.RESULT_SRC_TRAVERSABLE, 
 				model.LOADER, model.RESULTS_TBL);
 	}
-	
+	/**
+	 * returns page index 
+	 * 
+	 * @return int PAGE_IDX
+	 */
 	public int getPageIndex() {
 		return PAGE_IDX;
 	}
 	
+	/**
+	 *checks to see if there is another page to the query results  
+	 * if there is it will set nextPage to not null
+	 * 
+	 * @return boolean nextPage
+	 */
 	public boolean hasNextPage() {
 		if(!nextPageQueried && nextPage == null) {
 			try {
@@ -91,6 +114,11 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		return nextPage != null;
 	}
 	
+	/**
+	 * returns the next page if there is one that exists 
+	 * 
+	 * @return nextPage
+	 */
 	public ResultsPage<ImageResult> nextPage() {
 		if(hasNextPage()) {
 			return nextPage;
