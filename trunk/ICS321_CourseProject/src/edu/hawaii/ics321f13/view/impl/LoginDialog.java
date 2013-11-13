@@ -35,7 +35,8 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	private JTextField usernameField;
 	
 	
-	/*
+	/**
+	 * Creates the login Gui
 	 * Constructor for the <code>LoginDialog</code>
 	 */
 	public LoginDialog() {
@@ -44,10 +45,12 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		LOCK.acquireUninterruptibly(); // Acquire here to prevent other threads from acquiring after construction.
 		setTitle("Login");
 		
+		//the username Title
 		JLabel lblUsernameTitle = new JLabel("Username:");
 		lblUsernameTitle.setForeground(SystemColor.activeCaption);
 		lblUsernameTitle.setFont(new Font("Segoe UI", Font.PLAIN, 25));
 		
+		// the userNameField where the user enters the username
 		usernameField = new JTextField();
 		usernameField.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 11));
 		usernameField.setColumns(10);
@@ -131,7 +134,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 		});
 	}
 	
-	/*
+	/**
 	 * Accessor that returns the <code>LoginInfo</code>
 	 * @return <code>LoginInfo</code>
 	 */
