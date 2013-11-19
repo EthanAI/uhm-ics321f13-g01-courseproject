@@ -20,14 +20,15 @@ import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JLayer;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.UIManager;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.ListSelectionModel;
 import javax.swing.JScrollPane;
-import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JTextField;
@@ -64,6 +65,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
+
 import javax.swing.ScrollPaneConstants;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
@@ -87,21 +91,22 @@ public class DefaultView extends JFrame implements View {
 	private Traversable<ImageResult> imageSourceTraversable = null;
 	private Traverser<ImageResult> imageSource = null;
 	private ArrayList<ImageTransformer> imageTransformers = new ArrayList<ImageTransformer>();
-	private Timer animationTimer = null;
-	private BusyGlassPane busyPane = null;
-	private volatile boolean isLoading = false;
 	// View constants.
+	private final long HOVER_INVOCATION_MILLIS = 3000;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
 	private final int STD_TEXT_HEIGHT = 20;
 	private final double STD_PADDING_PERCENT = .06;
 	private final String ERROR_ICON_KEY = "OptionPane.errorIcon";
 	private final String INFO_ICON_KEY = "OptionPane.informationIcon";
+	// View component constants.
+	private final TranslucencyLayer FRAME_DIM = new TranslucencyLayer(Color.BLACK);
+	private final ImagePreviewLayer IMAGE_PREVIEW = new ImagePreviewLayer();
+	private final BusyIndicatorLayer BUSY_INDICATOR = new BusyIndicatorLayer();
 	// View variables.
 	private ResultsPage<ImageResult> currentPage = null;
 	private ImageTransformer thumbnailXform = null;
 	// View components. 
-	private Point lastRolloverCell = null;
 	private JPanel contentPane;
 	private JTable tblImageResults;
 	private JTextField txtSearchField;
@@ -117,12 +122,45 @@ public class DefaultView extends JFrame implements View {
 	public DefaultView(ImageLoader loader) {
 		// Set the LOADER field.
 		LOADER = loader;
+		// Set up the view layers.
+		FRAME_DIM.setChild(IMAGE_PREVIEW);
+		IMAGE_PREVIEW.setChild(BUSY_INDICATOR);
+		BUSY_INDICATOR.setText("Loading images...");
+		JLayer<JComponent> glassPane = new JLayer<JComponent>(null, FRAME_DIM);
+		FRAME_DIM.installUI(glassPane);
+		setGlassPane(glassPane);
+		FRAME_DIM.addComponentListener(new ComponentAdapter() {
+			
+			@Override
+			public void componentHidden(ComponentEvent evt) {
+				getGlassPane().setVisible(false);
+			}
+			
+			@Override
+			public void componentShown(ComponentEvent evt) {
+				getGlassPane().setVisible(true);
+				getGlassPane().requestFocus();
+			}
+			
+		});
+		FRAME_DIM.addMouseMotionListener(new MouseAdapter() {
+			
+			@Override
+			public void mouseMoved(MouseEvent evt) {
+				if(IMAGE_PREVIEW.isVisible()) {
+					FRAME_DIM.setVisible(false);
+					IMAGE_PREVIEW.setVisible(false);
+				}
+			}
+			
+		});
 		// Set up the view.
 		setTitle("Wikipedia Image Search");
 		setFont(new Font("Segoe UI", Font.PLAIN, 12));
 		setBackground(Color.WHITE);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 775, 740);
+		
 		contentPane = new JPanel();
 		contentPane.setBackground(Color.WHITE);
 		contentPane.setBorder(BorderFactory.createEmptyBorder());
@@ -141,6 +179,7 @@ public class DefaultView extends JFrame implements View {
 		scrollPaneImageResults.setColumnHeaderView(null);
 		scrollPaneImageResults.setViewportBorder(BorderFactory.createEmptyBorder());
 		scrollPaneImageResults.setBorder(BorderFactory.createEmptyBorder());
+		
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
 		gl_contentPane.setHorizontalGroup(
 			gl_contentPane.createParallelGroup(Alignment.LEADING)
@@ -372,67 +411,9 @@ public class DefaultView extends JFrame implements View {
 		tblImageResults.setAutoscrolls(false);
 		tblImageResults.setDragEnabled(false);
 		
-		tblImageResults.addMouseListener(new MouseAdapter() {
-			
-			@Override
-			public void mouseReleased(MouseEvent e) {
-				tblImageResults.clearSelection();
-				if(e.getButton() == 1 && e.getClickCount() % 2 == 0) {
-					int row = tblImageResults.rowAtPoint(e.getPoint());
-					int col = tblImageResults.columnAtPoint(e.getPoint());
-					if(row >= 0 && row < tblImageResults.getRowCount() 
-							&& col >= 0 && col < tblImageResults.getColumnCount()
-							&& tblImageResults.getValueAt(row, col) instanceof ImageResult) {
-						URL imageUrl = ((ImageResult) tblImageResults.getValueAt(row, col)).getImageURL();
-						if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-							try {
-								Desktop.getDesktop().browse(imageUrl.toURI());
-							} catch (IOException | URISyntaxException e1) {
-								// TODO Display the image locally.
-							}
-						}
-					}
-				}
-			}
-			
-			@Override
-			public void mouseExited(MouseEvent e) {
-				if(lastRolloverCell != null) {
-					// Repaint the last rollover cell to reset it to the unselected state.
-					tblImageResults.repaint(tblImageResults.getCellRect(lastRolloverCell.x, lastRolloverCell.y, true));
-				} else {
-					// If we do not know what the last rollover cell was, just repaint the whole table.
-					tblImageResults.repaint();
-				}
-				// Unset the last rollover cell.
-				lastRolloverCell = null;
-			}
-			
-		});
-		tblImageResults.addMouseMotionListener(new MouseMotionListener() {
-
-			@Override
-			public void mouseDragged(MouseEvent e) {
-				// Do nothing. 
-			}
-
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				Point cellAtPoint = new Point(tblImageResults.rowAtPoint(e.getPoint()), 
-						tblImageResults.columnAtPoint(e.getPoint()));
-				if(lastRolloverCell == null) {
-					// Repaint the dirty cell.
-					tblImageResults.repaint(tblImageResults.getCellRect(cellAtPoint.x, cellAtPoint.y, true));
-				} else if(lastRolloverCell != null && !lastRolloverCell.equals(cellAtPoint)) {
-					// Repaint the dirty cell.
-					tblImageResults.repaint(tblImageResults.getCellRect(cellAtPoint.x, cellAtPoint.y, true));
-					// Repaint the last rollover cell to reset it to the unselected state.
-					tblImageResults.repaint(tblImageResults.getCellRect(lastRolloverCell.x, lastRolloverCell.y, true));
-				}
-				lastRolloverCell = cellAtPoint;
-			}
-			
-		});
+		MouseAdapter resultsTableMouseAdapter = new ResultsTableMouseAdapter();
+		tblImageResults.addMouseListener(resultsTableMouseAdapter);
+		tblImageResults.addMouseMotionListener(resultsTableMouseAdapter);
 		tblImageResults.setDefaultRenderer(Object.class, new ImageTableCellRenderer(Color.WHITE, new Color(235, 235, 255), 
 				new Color(220, 220, 250), new Color(200, 200, 200), new Color(180, 180, 180), new Color(160, 160, 160), 
 				new Font("Segoe UI Light", Font.PLAIN, 15), new Font("Segoe UI Light", Font.PLAIN, 15), 
@@ -474,9 +455,6 @@ public class DefaultView extends JFrame implements View {
 			
 		});
 		
-		// Set up the Glass Pane.
-		busyPane = new BusyGlassPane(this);
-		setGlassPane(busyPane);
 		setLocationRelativeTo(null);
 	}
 
@@ -531,12 +509,8 @@ public class DefaultView extends JFrame implements View {
 
 	@Override
 	public void setBusy(boolean busy) {
-		busyPane.setVisible(busy);
-		if(busy) {
-			busyPane.start();
-		} else {
-			busyPane.stop();
-		}
+		FRAME_DIM.setVisible(busy);
+		BUSY_INDICATOR.setVisible(busy);
 	}
 
 	@Override
@@ -587,6 +561,121 @@ public class DefaultView extends JFrame implements View {
 				listener.actionPerformed(event);
 			}
 		}
+	}
+	
+	private class ResultsTableMouseAdapter extends MouseAdapter {
+		
+		private Point lastRolloverCell = null;
+		private final Timer HOVER_TIMER = new Timer(true);
+		private final double PREVIEW_INSET_SCALE = 0.08; // 8% of frame size.
+		
+		@Override
+		public void mouseMoved(MouseEvent e) {
+			final Point cellAtPoint = new Point(tblImageResults.rowAtPoint(e.getPoint()), 
+					tblImageResults.columnAtPoint(e.getPoint()));
+			if(cellAtPoint.x < 0 || cellAtPoint.y < 0) {
+				return; // If the table is empty, no painting or image preview is necessary.
+			}
+			// Handle repaint operation.
+			if(lastRolloverCell == null) {
+				// Repaint the dirty cell.
+				tblImageResults.repaint(tblImageResults.getCellRect(cellAtPoint.x, cellAtPoint.y, true));
+			} else if(lastRolloverCell != null && !lastRolloverCell.equals(cellAtPoint)) {
+				// Repaint the dirty cell.
+				tblImageResults.repaint(tblImageResults.getCellRect(cellAtPoint.x, cellAtPoint.y, true));
+				// Repaint the last rollover cell to reset it to the unselected state.
+				tblImageResults.repaint(tblImageResults.getCellRect(lastRolloverCell.x, lastRolloverCell.y, true));
+			}
+			// Schedule hover action.
+			TimerTask hoverTask = null;
+			if(lastRolloverCell == null || !lastRolloverCell.equals(cellAtPoint)) {
+				hoverTask = new TimerTask() {
+					
+					private final Point HOVER_INVOCATION_CELL = cellAtPoint;
+					
+					@Override
+					public void run() {
+						if(tblImageResults.getMousePosition() == null) {
+							return;
+						}
+						if(lastRolloverCell == null || lastRolloverCell.equals(HOVER_INVOCATION_CELL)) {
+							Object cellValue = 
+									tblImageResults.getValueAt(HOVER_INVOCATION_CELL.x, HOVER_INVOCATION_CELL.y);
+							Image previewImage = null;
+							if(cellValue instanceof ImageResult) {
+								try {
+									// TODO Do this using the image loader to get this off of the EDT.
+									Dimension previewSize = contentPane.getSize();
+									previewSize.width -= (int) (previewSize.width * PREVIEW_INSET_SCALE);
+									previewSize.height -= (int) (previewSize.height * PREVIEW_INSET_SCALE);
+									previewImage = ((ImageResult) cellValue).getImage(previewSize,
+											new SizeNormalizationImageTransformer(
+													previewSize.width, previewSize.height));
+								} catch (IOException e) {
+									// If the image fails to load, simply do not show a hover preview.
+								}
+							} else if(cellValue instanceof Image) {
+								previewImage = (Image) cellValue;
+							}
+							// Since it may take a long time to load the preview image, verify that the
+							// mouse is still over the same cell.
+							if(previewImage != null && (lastRolloverCell == null 
+									|| lastRolloverCell.equals(HOVER_INVOCATION_CELL))) {
+								IMAGE_PREVIEW.setImage(previewImage);
+								FRAME_DIM.setVisible(true);
+								IMAGE_PREVIEW.setVisible(true);
+							} else {
+								cancel();
+							}
+						} else {
+							cancel();
+						}
+					}
+					
+				};
+			}
+			// Now that we are done comparing the old and current rollover cell values, update the stored value.
+			lastRolloverCell = cellAtPoint;
+			// After we have updated the value, start the hover timer.
+			if(hoverTask != null) {
+				HOVER_TIMER.schedule(hoverTask, HOVER_INVOCATION_MILLIS);
+			}
+		}
+
+		@Override
+		public void mouseReleased(MouseEvent e) {
+			tblImageResults.clearSelection();
+			if(e.getButton() == 1 && e.getClickCount() % 2 == 0) {
+				int row = tblImageResults.rowAtPoint(e.getPoint());
+				int col = tblImageResults.columnAtPoint(e.getPoint());
+				if(row >= 0 && row < tblImageResults.getRowCount() 
+						&& col >= 0 && col < tblImageResults.getColumnCount()
+						&& tblImageResults.getValueAt(row, col) instanceof ImageResult) {
+					URL imageUrl = ((ImageResult) tblImageResults.getValueAt(row, col)).getImageURL();
+					if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+						try {
+							Desktop.getDesktop().browse(imageUrl.toURI());
+						} catch (IOException | URISyntaxException e1) {
+							// TODO Display the image locally.
+						}
+					}
+				}
+			}
+		}
+
+		@Override
+		public void mouseExited(MouseEvent e) {
+			if(lastRolloverCell != null) {
+				// Repaint the last rollover cell to reset it to the unselected state.
+				tblImageResults.repaint(tblImageResults.getCellRect(lastRolloverCell.x, lastRolloverCell.y, true));
+			} else {
+				// If we do not know what the last rollover cell was, just repaint the whole table.
+				tblImageResults.repaint();
+			}
+			// Unset the last rollover cell.
+			lastRolloverCell = null;
+		}
+		
 	}
 	
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {

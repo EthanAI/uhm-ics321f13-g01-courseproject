@@ -87,14 +87,12 @@ public class DefaultImageResult implements ImageResult {
 			}
 		}
 		// Determine whether or not we need to refresh the image cache.
-		if(imageCache == null || !imageCacheOriginalSize.equals(findNearestAvailableSize(targetSize).getImageSize())) {
+		if(imageCache == null || !imageCacheOriginalSize.equals(findNearestAvailableSize(targetSize).getImageSize()) 
+				|| !xformsDeepEquals(xformsCache, transformers)) {
 			imageCache = findNearestAvailableSize(targetSize).getImage();
 			imageCacheOriginalSize = new Dimension(imageCache.getWidth(), imageCache.getHeight());
-			xformsCache = null;
-		} 
-		if(!xformsDeepEquals(xformsCache, transformers)) {
-			imageCache = createComposite(imageCache, transformers);
 			xformsCache = transformers;
+			imageCache = createComposite(imageCache, transformers);
 		}
 		return imageCache;
 	}
@@ -142,7 +140,10 @@ public class DefaultImageResult implements ImageResult {
 	}
 	
 	private boolean xformsDeepEquals(ImageTransformer[] xforms1, ImageTransformer[] xforms2) {
-		if(xforms1 == null && xforms2 == null) {
+		if((xforms1 == null && xforms2 == null) 
+				|| (xforms1 != null && xforms1.length == 0 && xforms2 == null) 
+				|| (xforms2 != null && xforms1 == null && xforms2.length == 0)
+				|| (xforms1 != null && xforms1.length == 0 && xforms2 != null && xforms2.length == 0)) {
 			return true;
 		} else if((xforms1 == null && xforms2 != null)
 				|| xforms1 != null && xforms2 == null
@@ -183,12 +184,12 @@ public class DefaultImageResult implements ImageResult {
 			throw new NoSuchElementException();
 		}
 		// Linear search for nearest size.
-		int targetArea = (targetSize == null ? Integer.MAX_VALUE : targetSize.width * targetSize.height);
+		long targetArea = (targetSize == null ? Long.MAX_VALUE : targetSize.width * targetSize.height);
 		int nearestIdx = 0;
-		int nearestAreaDiff = Math.abs(
+		long nearestAreaDiff = Math.abs(
 				targetArea - (availableImages[0].getImageSize().width * availableImages[0].getImageSize().height));
 		for(int i = 0; i < availableImages.length; i++) {
-			int currentAreaDiff = Math.abs(
+			long currentAreaDiff = Math.abs(
 					targetArea - (availableImages[i].getImageSize().width * availableImages[i].getImageSize().height));
 			if(currentAreaDiff < nearestAreaDiff) {
 				nearestIdx = i;
