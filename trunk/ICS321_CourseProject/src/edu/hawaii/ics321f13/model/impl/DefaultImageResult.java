@@ -115,7 +115,8 @@ public class DefaultImageResult implements ImageResult {
 	 */
 	@Override
 	public String getArticleTitle() {
-		return ARTICLE_TITLE;
+		// TODO Replace with more elegant method of making string more human-readable.
+		return ARTICLE_TITLE.replace('_', ' ');
 	}
 
 	/**

@@ -1,7 +1,9 @@
 package edu.hawaii.ics321f13.view.impl;
 
+import java.awt.Dimension;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
@@ -19,25 +21,23 @@ public class SynchronousImageLoader extends AbstractImageLoader {
 		// There are no thread pools to close, so do nothing.
 	}
 
-	/*
+	/**
 	 * Downloads a set number of images
 	 * 
 	 * @param source - a <code>Traversable</code> list of <code>ImageResult</code>s
 	 * @param loadCount - the number of images to download
 	 * 
-	 * @return int - the number of images actually loaded
-	 * 
-	 * @throws <code>IOException</code>
+	 * @return int - the number of images actually loaded.
 	 */
 	@Override
-	public int loadImages(Traversable<ImageResult> source, int loadCount) {
+	public int loadImages(Iterable<ImageResult> source, int loadCount, Dimension targetImageSize) {
 		ArrayList<ImageResult> loaded = new ArrayList<ImageResult>();
-		Traverser<ImageResult> images = source.traverser();
+		Iterator<ImageResult> images = source.iterator();
 		for(int i = 0; i < loadCount && images.hasNext(); i++) {
 			ImageResult result = images.next();
 			if(!result.isLoaded()) {
 				try {
-					result.getImage(); // Load the actual image.
+					result.getImage(targetImageSize); // Load the actual image.
 				} catch (IOException e) {
 					fireOnError(e);
 				}
