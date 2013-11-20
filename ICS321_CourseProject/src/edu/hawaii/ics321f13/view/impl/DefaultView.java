@@ -60,6 +60,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
+import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
@@ -92,7 +94,8 @@ public class DefaultView extends JFrame implements View {
 	private Traverser<ImageResult> imageSource = null;
 	private ArrayList<ImageTransformer> imageTransformers = new ArrayList<ImageTransformer>();
 	// View constants.
-	private final long HOVER_INVOCATION_MILLIS = 3000;
+	private final long PREVIEW_LOAD_MILLIS = 750;
+	private final long PREVIEW_DISP_MILLIS = 3000;
 	private final int STD_ROW_COUNT = 4;
 	private final int STD_COL_COUNT = 8;
 	private final int STD_TEXT_HEIGHT = 20;
@@ -143,13 +146,27 @@ public class DefaultView extends JFrame implements View {
 			}
 			
 		});
+		
+		FRAME_DIM.addMouseListener(new MouseAdapter() {
+			
+			@Override
+			public void mouseReleased(MouseEvent evt) {
+				if(IMAGE_PREVIEW.isVisible() && IMAGE_PREVIEW.isCloseIconVisible()) {
+					BUSY_INDICATOR.setVisible(false);
+					IMAGE_PREVIEW.setVisible(false);
+					FRAME_DIM.setVisible(false);
+				}
+			}
+			
+		});
+		
 		FRAME_DIM.addMouseMotionListener(new MouseAdapter() {
 			
 			@Override
 			public void mouseMoved(MouseEvent evt) {
-				if(IMAGE_PREVIEW.isVisible()) {
-					FRAME_DIM.setVisible(false);
+				if(IMAGE_PREVIEW.isVisible() && !IMAGE_PREVIEW.isCloseIconVisible()) {
 					IMAGE_PREVIEW.setVisible(false);
+					FRAME_DIM.setVisible(false);
 				}
 			}
 			
@@ -592,44 +609,84 @@ public class DefaultView extends JFrame implements View {
 				hoverTask = new TimerTask() {
 					
 					private final Point HOVER_INVOCATION_CELL = cellAtPoint;
+					private final long INVOCATION_TIME = System.currentTimeMillis();
 					
 					@Override
 					public void run() {
+						// Make sure the mouse is still within the bounds of the table, or we will get -1 from
+						// the xxxAtPoint() methods. 
 						if(tblImageResults.getMousePosition() == null) {
 							return;
 						}
 						if(lastRolloverCell == null || lastRolloverCell.equals(HOVER_INVOCATION_CELL)) {
-							Object cellValue = 
-									tblImageResults.getValueAt(HOVER_INVOCATION_CELL.x, HOVER_INVOCATION_CELL.y);
-							Image previewImage = null;
-							if(cellValue instanceof ImageResult) {
-								try {
-									// TODO Do this using the image loader to get this off of the EDT.
-									Dimension previewSize = contentPane.getSize();
-									previewSize.width -= (int) (previewSize.width * PREVIEW_INSET_SCALE);
-									previewSize.height -= (int) (previewSize.height * PREVIEW_INSET_SCALE);
-									previewImage = ((ImageResult) cellValue).getImage(previewSize,
-											new SizeNormalizationImageTransformer(
-													previewSize.width, previewSize.height));
-								} catch (IOException e) {
-									// If the image fails to load, simply do not show a hover preview.
+							final Dimension PREVIEW_SIZE = getPreviewSize();
+							
+							ImageLoadListener listener = new ImageLoadListener() {
+
+								@Override
+								public void onLoaded(ImageResult loaded) {
+									Point cellAtMousePos = getCellAtPoint(tblImageResults.getMousePosition());
+									if(loaded != null && cellAtMousePos != null 
+											&& cellAtMousePos.equals(HOVER_INVOCATION_CELL)) {
+										try {
+											final Image PREVIEW_IMAGE = loaded.getImage(PREVIEW_SIZE, 
+													new SizeNormalizationImageTransformer(
+															PREVIEW_SIZE.width, PREVIEW_SIZE.height));
+											// Now that we have the image loaded, wait until the preview display
+											// timeout has elapsed before we show the preview.
+											long waitTime = PREVIEW_DISP_MILLIS - PREVIEW_LOAD_MILLIS
+													- (System.currentTimeMillis() - INVOCATION_TIME);
+											HOVER_TIMER.schedule(new TimerTask() {
+
+												@Override
+												public void run() {
+													// Since it may take a long time to load the preview image, verify that the
+													// mouse is still over the same cell.
+													Point cellAtMousePos = getCellAtPoint(tblImageResults.getMousePosition());
+													if(PREVIEW_IMAGE != null && !IMAGE_PREVIEW.isVisible() 
+															&& (lastRolloverCell == null || (cellAtMousePos != null 
+															&& cellAtMousePos.equals(HOVER_INVOCATION_CELL)))) {
+														IMAGE_PREVIEW.setCloseIconVisible(false);
+														IMAGE_PREVIEW.setImage(PREVIEW_IMAGE);
+														FRAME_DIM.setVisible(true);
+														IMAGE_PREVIEW.setVisible(true);
+													} else {
+														// If the user is no longer hovering over the same cell (image)
+														// discard the preview without showing it. 
+														cancel();
+													}
+												}
+												
+											}, (waitTime > 0 ? waitTime : 0));
+										} catch (IOException e) {
+											// If the image fails to load, simply do not show a preview.
+										}
+									}
 								}
-							} else if(cellValue instanceof Image) {
-								previewImage = (Image) cellValue;
-							}
-							// Since it may take a long time to load the preview image, verify that the
-							// mouse is still over the same cell.
-							if(previewImage != null && (lastRolloverCell == null 
-									|| lastRolloverCell.equals(HOVER_INVOCATION_CELL))) {
-								IMAGE_PREVIEW.setImage(previewImage);
-								FRAME_DIM.setVisible(true);
-								IMAGE_PREVIEW.setVisible(true);
-							} else {
-								cancel();
-							}
+
+								@Override
+								public void onLoaded(ImageResult[] loaded) {
+								}
+
+								@Override
+								public void onError(Exception error) {
+								}
+								
+							};
+							// Load the actual image.
+							loadCellImage(HOVER_INVOCATION_CELL.x, HOVER_INVOCATION_CELL.y, PREVIEW_SIZE, listener);
 						} else {
 							cancel();
 						}
+					}
+					
+					private Point getCellAtPoint(Point p) {
+						Point cellAtPoint = null;
+						if(p != null) {
+							cellAtPoint = new Point(tblImageResults.rowAtPoint(p), 
+									tblImageResults.columnAtPoint(p));
+						}
+						return cellAtPoint;
 					}
 					
 				};
@@ -638,27 +695,68 @@ public class DefaultView extends JFrame implements View {
 			lastRolloverCell = cellAtPoint;
 			// After we have updated the value, start the hover timer.
 			if(hoverTask != null) {
-				HOVER_TIMER.schedule(hoverTask, HOVER_INVOCATION_MILLIS);
+				HOVER_TIMER.schedule(hoverTask, PREVIEW_LOAD_MILLIS);
 			}
 		}
 
 		@Override
 		public void mouseReleased(MouseEvent e) {
-			tblImageResults.clearSelection();
-			if(e.getButton() == 1 && e.getClickCount() % 2 == 0) {
-				int row = tblImageResults.rowAtPoint(e.getPoint());
-				int col = tblImageResults.columnAtPoint(e.getPoint());
-				if(row >= 0 && row < tblImageResults.getRowCount() 
-						&& col >= 0 && col < tblImageResults.getColumnCount()
-						&& tblImageResults.getValueAt(row, col) instanceof ImageResult) {
+			tblImageResults.clearSelection(); // Permanent selection is disabled.
+			
+			int row = tblImageResults.rowAtPoint(e.getPoint());
+			int col = tblImageResults.columnAtPoint(e.getPoint());
+			// Validate row and col values.
+			if(row >= 0 && row < tblImageResults.getRowCount() 
+					&& col >= 0 && col < tblImageResults.getColumnCount()
+					&& tblImageResults.getValueAt(row, col) instanceof ImageResult) {
+				boolean forceDispLocal = false; // If set, image should be displayed in the preview pane.
+				// For double clicks, open the image in the user's web browser.
+				if(e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() % 2 == 0) {
 					URL imageUrl = ((ImageResult) tblImageResults.getValueAt(row, col)).getImageURL();
 					if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
 						try {
 							Desktop.getDesktop().browse(imageUrl.toURI());
 						} catch (IOException | URISyntaxException e1) {
-							// TODO Display the image locally.
+							// If opening an image in the user's web browser is disabled or not supported,
+							// display it locally in the preview pane instead.
+							forceDispLocal = true;
 						}
 					}
+				} 
+				// For single clicks, display the preview pane. 
+				if(forceDispLocal || (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() % 2 != 0)) {
+					final Dimension PREVIEW_SIZE = getPreviewSize();
+					
+					IMAGE_PREVIEW.setCloseIconVisible(true);
+					BUSY_INDICATOR.setText("");
+					FRAME_DIM.setVisible(true);
+					BUSY_INDICATOR.setVisible(true);
+					ImageLoadListener listener = new ImageLoadListener() {
+						
+						@Override
+						public void onLoaded(ImageResult loaded) {
+							try {
+								Image loadedImage = loaded.getImage(PREVIEW_SIZE, 
+										new SizeNormalizationImageTransformer(PREVIEW_SIZE.width, PREVIEW_SIZE.height));
+								IMAGE_PREVIEW.setImage(loadedImage);
+								BUSY_INDICATOR.setVisible(false);
+								IMAGE_PREVIEW.setVisible(true);
+							} catch (IOException e) {
+								// If the image fails to load, simply do not show a hover preview.
+							}
+						}
+
+						@Override
+						public void onLoaded(ImageResult[] loaded) {
+						}
+
+						@Override
+						public void onError(Exception error) {
+						}
+						
+					};
+					// Load the actual image. 
+					loadCellImage(row, col, PREVIEW_SIZE, listener);
 				}
 			}
 		}
@@ -674,6 +772,25 @@ public class DefaultView extends JFrame implements View {
 			}
 			// Unset the last rollover cell.
 			lastRolloverCell = null;
+		}
+		
+		private void loadCellImage(int row, int col, Dimension targetImageSize, ImageLoadListener listener) {
+			Object cellValue = tblImageResults.getValueAt(row, col);
+			if(cellValue instanceof ImageResult) {
+				ArrayList<ImageResult> iterable = new ArrayList<ImageResult>();
+				iterable.add((ImageResult) cellValue);
+				
+				LOADER.addImageLoadListener(listener);
+				LOADER.loadImages(iterable, 1, targetImageSize);
+				LOADER.removeImageLoadListener(listener);
+			} // If the cellValue is null or not an instance of ImageResult, simply do not display a preview.
+		}
+		
+		private Dimension getPreviewSize() {
+			Dimension previewSize = contentPane.getSize();
+			previewSize.width -= (int) (previewSize.width * PREVIEW_INSET_SCALE);
+			previewSize.height -= (int) (previewSize.height * PREVIEW_INSET_SCALE);
+			return previewSize;
 		}
 		
 	}
