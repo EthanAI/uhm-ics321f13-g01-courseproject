@@ -19,6 +19,12 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 	private final int ROW_COUNT;
 	private final int COL_COUNT;
 	
+	/*
+	 * @parm text - the text
+	 * @parm Jtable - is the results table taken from the data
+	 * @parm rowCount - is the row count of the results 
+	 * @parm colCount - is the column count of the results
+	 */
 	public EmptyResultSetPage(String text, JTable resultsTable, int rowCount, int colCount) {
 		TEXT = Objects.requireNonNull(text);
 		RESULTS_TBL = Objects.requireNonNull(resultsTable);

@@ -59,7 +59,7 @@ public class DefaultSearchableModel implements SearchableModel {
 	/**
 	 * Searches the database for the images related to the supplied key String
 	 * 
-	 * @param key - String containing the search temr
+	 * @param key - String containing the search term
 	 * @param resultType - Class<?> //TODO
 	 * @param constraint - ResultConstraint //TODO
 	 * 

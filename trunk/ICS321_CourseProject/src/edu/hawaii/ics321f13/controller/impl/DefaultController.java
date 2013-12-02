@@ -66,6 +66,7 @@ public class DefaultController implements Controller<ImageResult> {
 		if(port < MIN_PORT || port > MAX_PORT) {
 			throw new IllegalArgumentException("port number out of valid range (1 - 65535)");
 		}
+		//checks to see if there is login information available if not start the loginPromt from the <code>getLogininfo</code>
 		if(m_login == null) {
 			LoginPrompt loginPrompt = VIEW_FACTORY.createLoginPrompt();
 			m_login = loginPrompt.getLoginInfo();
@@ -78,10 +79,15 @@ public class DefaultController implements Controller<ImageResult> {
 			// Should never happen.
 			e.printStackTrace();
 		}
+		//calls the view window
 		VIEW = VIEW_FACTORY.createView();
 		VIEW.addActionListener(new ActionListener() {
 
 			@Override
+			/*
+			 * (non-Javadoc)
+			 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+			 */
 			public void actionPerformed(ActionEvent e) {
 				if(e.getID() == ViewEventType.QUERY.getID()) {
 					Traversable<ImageResult> queryResults = onQuery(Objects.requireNonNull(e.getActionCommand()));
