@@ -32,6 +32,7 @@ public class ProjectMain {
 	
 	/**
 	 * Initializes the application component factories and surrenders control to the <code>Controller</code>.
+	 * The factory changes the data that is in the model and figures out the logic behind it
 	 */
 	private static void init() {
 		ViewFactory defaultViewFactory = new DefaultViewFactory();

@@ -13,7 +13,10 @@ public class SizeNormalizationImageTransformer extends AbstractImageTransformer 
 		HEIGHT = height;
 	}
 	
-	@Override
+	/*
+	 * Change the image size and style
+	 * @see edu.hawaii.ics321f13.view.interfaces.ImageTransformer#createComposite(java.awt.image.BufferedImage)
+	 */
 	public BufferedImage createComposite(BufferedImage source) {
 		int width = source.getWidth();
 		int height = source.getHeight();
@@ -31,7 +34,10 @@ public class SizeNormalizationImageTransformer extends AbstractImageTransformer 
 		bufScaled.getGraphics().drawImage(scaled, 0, 0, null);
 		return bufScaled;
 	}
-	 
+	/*
+	 * 
+	 * @see edu.hawaii.ics321f13.view.impl.AbstractImageTransformer#equals(java.lang.Object)
+	 */
 	@Override
 	public boolean equals(Object other) {
 		if(other instanceof SizeNormalizationImageTransformer) {

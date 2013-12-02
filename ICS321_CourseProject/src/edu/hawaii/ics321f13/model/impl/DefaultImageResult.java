@@ -140,6 +140,13 @@ public class DefaultImageResult implements ImageResult {
 		return imageCache != null;
 	}
 	
+	/**
+	 * Returns a boolean to determine if the two xforms1 and xforms2 from <code>ImageTransformer</code> are the same
+	 * 
+	 * @param xforms1
+	 * @param xforms2
+	 * @return boolean
+	 */	
 	private boolean xformsDeepEquals(ImageTransformer[] xforms1, ImageTransformer[] xforms2) {
 		if((xforms1 == null && xforms2 == null) 
 				|| (xforms1 != null && xforms1.length == 0 && xforms2 == null) 
@@ -239,6 +246,12 @@ public class DefaultImageResult implements ImageResult {
 		private final URL IMAGE_URL;
 		private final Dimension IMAGE_SIZE;
 		
+		/**
+		 * Constructor for ImageReference class
+		 * 
+		 * @param imageSize
+		 * @param imageURL
+		 */
 		public ImageReference(URL imageUrl, Dimension imageSize) {
 			IMAGE_URL = Objects.requireNonNull(imageUrl);
 			IMAGE_SIZE = Objects.requireNonNull(imageSize);
@@ -247,11 +260,17 @@ public class DefaultImageResult implements ImageResult {
 		public BufferedImage getImage() throws IOException {
 			return ImageIO.read(getImageURL());
 		}
-		
+		/*
+		 * Simple getmethod for the image url 
+		 * @return IMAGE_URL
+		 */			
 		public URL getImageURL() {
 			return IMAGE_URL;
 		}
-		
+		/*
+		 * Simple getmethod for the image Size 
+		 * @return IMAGE_SIZE
+		 */		
 		public Dimension getImageSize() {
 			return IMAGE_SIZE;
 		}
