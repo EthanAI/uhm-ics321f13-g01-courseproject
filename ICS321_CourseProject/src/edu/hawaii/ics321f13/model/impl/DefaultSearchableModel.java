@@ -82,21 +82,18 @@ public class DefaultSearchableModel implements SearchableModel {
 		}
 		// Check if we know how to handle this query.
 		String sql = null;
+		int maxImages = 200;
 		if(resultType.equals(ImageResult.class)) {
-			if(constraint.equals(ResultConstraint.CONTAINS)) {
-				sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-						" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
-				
-				int maxImages = 40;
+			if(true) {
 				sql = "SELECT page_title, il_to FROM page, searchindex, imagelinks WHERE page_id=si_page and il_from = page_id " +
 						"AND il_to regexp '^[a-zA-Z0-9._,-]*$' AND MATCH(si_title) AGAINST('" + 
 						key + 
 						"' IN boolean MODE) AND page_is_redirect=0 AND page_namespace IN (0) limit " +
 						maxImages;
 				
-			} else if(constraint.equals(ResultConstraint.EQUALS)) {
+			} else {
 				sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-						" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
+						" WHERE title LIKE '%" + key + "%' limit " + maxImages; 	// Loose matching. cat = catherine
 			}
 		}
 		if(sql != null) {
@@ -116,8 +113,23 @@ public class DefaultSearchableModel implements SearchableModel {
 	 */
 	private Traversable<ImageResult> executeQuery(String sql) {
 		try {
+			long timeSearchStart = System.currentTimeMillis();
+			
 			ResultSet results = DATABASE.executeQuery(sql);
+			
+			long timeSearchStop = System.currentTimeMillis();
+		    float elapsedTime = (float) (timeSearchStop - timeSearchStart) / 1000;
+		    System.out.println("Search took: " + elapsedTime + " seconds.");
+			
+			//count the number of results
+			// Go to the last row 
+			results.last(); 
+			int numRows = results.getRow(); 
+			// Reset row before iterating to get data 
+			results.beforeFirst();
+			System.out.println("Recieved " + numRows + " results.");
 			Traverser<ImageResult> resultTraverser = new ImageResultTraverser(results);
+			
 			return new SingletonTraversable<ImageResult>(resultTraverser);
 		} catch (SQLException e) {
 			throw new RuntimeException("SQLException occurred while processing request: " 
