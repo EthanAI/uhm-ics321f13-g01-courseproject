@@ -19,12 +19,6 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 	private final int ROW_COUNT;
 	private final int COL_COUNT;
 	
-	/*
-	 * @parm text - the text
-	 * @parm Jtable - is the results table taken from the data
-	 * @parm rowCount - is the row count of the results 
-	 * @parm colCount - is the column count of the results
-	 */
 	public EmptyResultSetPage(String text, JTable resultsTable, int rowCount, int colCount) {
 		TEXT = Objects.requireNonNull(text);
 		RESULTS_TBL = Objects.requireNonNull(resultsTable);
@@ -53,6 +47,11 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 		model.setColumnCount(COL_COUNT);
 		model.setRowCount(ROW_COUNT);
 		RESULTS_TBL.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+	}
+	
+	@Override
+	public boolean isClosed() {
+		return false;
 	}
 
 	@Override
@@ -83,16 +82,23 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 		// There is never a previous page.
 		throw new NoSuchElementException();
 	}
-
+	
 	@Override
-	public int populatePage() {
+	public void populatePage() {
+		populatePage(null);
+	}
+	
+	@Override
+	public void populatePage(Runnable onComplete) {
 		DefaultTableModel model = (DefaultTableModel) RESULTS_TBL.getModel();
 		model.setColumnCount(1);
 		model.setRowCount(1);
 		RESULTS_TBL.setRowHeight(DEFAULT_ROW_HEIGHT);
 		RESULTS_TBL.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 		RESULTS_TBL.setValueAt(TEXT, 0, 0);
-		return 0; // No images are ever loaded.
+		if(onComplete != null) {
+			onComplete.run();
+		}
 	}
 
 	@Override
@@ -102,7 +108,7 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 
 	@Override
 	public void scrollToVisible(boolean animate, Runnable onComplete) {
-		// TODO Auto-generated method stub
+		// Do nothing. This is the only page. It is always visible.
 		
 	}
 
@@ -112,9 +118,14 @@ public class EmptyResultSetPage implements ResultsPage<ImageResult> {
 	}
 
 	@Override
-	public void setActive(Runnable onComplete, ResultsPage.ActivityChangeAction... actions) {
+	public void setActive(Runnable onLoaded, Runnable onVisible, ResultsPage.ActivityChangeAction... actions) {
 		populatePage();
-		onComplete.run();
+		if(onLoaded != null) {
+			onLoaded.run();
+		}
+		if(onVisible != null) {
+			onVisible.run();
+		}
 	}
 
 }

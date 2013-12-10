@@ -3,13 +3,17 @@ package edu.hawaii.ics321f13.view.impl;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 
@@ -40,6 +44,9 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	private boolean nextPageQueried = false;
 	// Page state.
 	private boolean isOpen = false;
+	private final int ANIM_FRAMERATE = 30;
+	private final double ANIM_DURATION = 0.3;
+	private static Timer ANIM_TIMER = null;
 	
 	public DefaultResultsPage(int pageIdx, int rowCount, int colCount, 
 			Traversable<ImageResult> resultSrc, ImageLoader resultsLoader, JTable resultsTbl) {
@@ -65,11 +72,17 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	 * Internal constructor used to create other pages based on the information in the <code>model</code> page.
 	 * 
 	 * @param model - the page from which constructor parameters will be copied.
-	 * @param pageIdx - the index of the page.
+	 * @param modelPageIdx - the index of the model page.
+	 * @param relativePageIdx - the index of this page, relative to the index of the model page.
 	 */
-	private DefaultResultsPage(DefaultResultsPage model, int pageIdx) {
-		this(pageIdx, model.ROW_COUNT, model.COL_COUNT, model.RESULT_SRC_TRAVERSABLE, 
+	private DefaultResultsPage(DefaultResultsPage model, int modelPageIdx, int relativePageIdx) {
+		this(modelPageIdx + relativePageIdx, model.ROW_COUNT, model.COL_COUNT, model.RESULT_SRC_TRAVERSABLE, 
 				model.LOADER, model.RESULTS_TBL);
+		if(relativePageIdx == 1) {
+			previousPage = model;
+		} else if(relativePageIdx == -1) {
+			nextPage = model;
+		}
 	}
 	
 	public int getPageIndex() {
@@ -81,7 +94,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			try {
 				setTraversableIndex(PAGE_END_IDX);
 				if(RESULT_SRC.hasNext()) {
-					nextPage = new DefaultResultsPage(this, PAGE_IDX + 1);
+					nextPage = new DefaultResultsPage(this, PAGE_IDX, 1);
 				}
 			} catch(NoSuchElementException e) {
 				// Do nothing. The next page does not exist and this method will report as such.
@@ -104,7 +117,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			try {
 				setTraversableIndex(PAGE_START_IDX);
 				if(RESULT_SRC.hasPrevious()) {
-					previousPage = new DefaultResultsPage(this, PAGE_IDX - 1);
+					previousPage = new DefaultResultsPage(this, PAGE_IDX, -1);
 				}
 			} catch(NoSuchElementException e) {
 				// Do nothing. The previous page does not exist and this method will return as such.
@@ -122,77 +135,74 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		}
 	}
 	
+	public void populatePage() {
+		internalPopulatePage(false, null);
+	}
+	
 	/**
 	 * Populates the provided <code>JTable</code> with the contents of this <code>DefaultResultsPage</code>.
-	 * 
-	 * @return the number of results loaded.
-	 * 
-	 * @throws NoSuchElementException if the contents of this page cannot be accessed by means of the specified
-	 * <code>resultSrc</code>.
 	 */
-	public int populatePage() {
+	public void populatePage(Runnable onComplete) {
+		internalPopulatePage(false, onComplete);
+	}
+	
+	private void internalPopulatePage(boolean tablePrepared, final Runnable onComplete) {
+		if(isOpen) {
+			if(onComplete != null) {
+				onComplete.run();
+			}
+			return;
+		}
+		if(!tablePrepared) {
+			prepareTable();
+		}
 		// Rewind/Fast-forward the Traverser.
 		setTraversableIndex(PAGE_START_IDX);
 		// Configure the JTable: set column count.
 		final int colOffset = PAGE_IDX * COL_COUNT;
 		final DefaultTableModel resultsTblModel = (DefaultTableModel) RESULTS_TBL.getModel();
-		prepareTable();
 		// Populate the resultsPage: init listeners.
 		ImageLoadListener listener = new ImageLoadListener() {
-			final int UID = 10; // ID of 10 is only used by this method.
-			int row = 0; 
-			int col = 0;
+			private final AtomicInteger row = new AtomicInteger(0); 
+			private final AtomicInteger col = new AtomicInteger(0);
 			@Override
-			public void onLoaded(ImageResult loaded) {
-				resultsTblModel.setValueAt(loaded, row, colOffset + col);
-				if(col >= COL_COUNT - 1) {
-					row++;
-					col = 0;
+			public synchronized void onLoaded(ImageResult loaded) {
+				resultsTblModel.setValueAt(loaded, row.get(), colOffset + col.get());
+				if(col.get() >= COL_COUNT - 1) {
+					row.incrementAndGet();
+					col.set(0);
 				} else {
-					col++;
+					col.incrementAndGet();
 				}
 			}
 	
 			@Override
-			public void onLoaded(ImageResult[] loaded) {}
-			
-			@Override
-			public void onError(Exception error) {
-				resultsTblModel.setValueAt(UIManager.getIcon("JOptionPane.warningIcon"), row, colOffset + col);
-				if(col >= COL_COUNT - 1) {
-					row++;
-					col = 0;
-				} else {
-					col++;
+			public void onLoaded(ImageResult[] loaded) {
+				// After the page is populated, run the on-complete task (if one exists).
+				if(onComplete != null) {
+					onComplete.run();
 				}
-			}
-
-			@Override
-			public int hashCode() {
-				return UID;
 			}
 			
 			@Override
-			public boolean equals(Object other) {
-				if(other instanceof ImageLoadListener) {
-					return hashCode() == other.hashCode();
+			public void onError(Exception error) {error.printStackTrace();
+				resultsTblModel.setValueAt(UIManager.getIcon("OptionPane.warningIcon"), 
+						row.get(), colOffset + col.get());
+				if(col.get() >= COL_COUNT - 1) {
+					row.incrementAndGet();
+					col.set(0);
 				} else {
-					return false;
+					col.incrementAndGet();
 				}
-				
 			}
 			
 		};
-		LOADER.addImageLoadListener(listener);
 		// Populate  page of results.
 		int columnWidth = (RESULTS_TBL.getColumnCount() <= 0 ? Integer.MAX_VALUE 
 				: RESULTS_TBL.getColumnModel().getColumn(0).getWidth());
-		int loadCount = LOADER.loadImages(RESULT_SRC_TRAVERSABLE, (ROW_COUNT * COL_COUNT), 
-				new Dimension(RESULTS_TBL.getRowHeight(), columnWidth));
-		// Once we have the image results, we don't need the listener anymore.
-		LOADER.removeImageLoadListener(listener);
+		LOADER.loadImages(RESULT_SRC_TRAVERSABLE, (ROW_COUNT * COL_COUNT), 
+				new Dimension(RESULTS_TBL.getRowHeight(), columnWidth), listener);
 		isOpen = true;
-		return loadCount;
 	}
 	
 	public void scrollToVisible(boolean animate) {
@@ -200,7 +210,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	}
 	
 	public void scrollToVisible(boolean animate, Runnable onComplete) {
-		final Rectangle VISIBLE = RESULTS_TBL.getVisibleRect(); // Used for animation. Visible in the current frame. 
+		System.out.println("Scrolling page to visible: " + PAGE_IDX);
 		if(!animate) {
 			final Rectangle TARGET = RESULTS_TBL.getVisibleRect(); // Will be modified, so we must allocate a new rectangle.
 			int colIdx = (PAGE_IDX * COL_COUNT);
@@ -217,20 +227,37 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			if(onComplete != null) {
 				onComplete.run();
 			}
+		} else {
+			if(ANIM_TIMER != null) {
+				ANIM_TIMER.stop();
+			}
+			ANIM_TIMER = new Timer((int) (1000.0 / ANIM_FRAMERATE), new AnimationFrameUpdater(onComplete));
+			ANIM_TIMER.setInitialDelay(0);
+			ANIM_TIMER.start();
 		}
 	}
 	
 	public void setActive(ActivityChangeAction... actions) {
-		setActive(null, actions);
+		setActive(null, null, actions);
 	}
 
-	public void setActive(final Runnable onComplete, final ActivityChangeAction... actions) {
+	public void setActive(final Runnable onLoaded, final Runnable onVisible, final ActivityChangeAction... actions) {
+		prepareTable();
 		Runnable action = new Runnable() {
 
 			@Override
 			public void run() {
-				populatePage();
-				scrollToVisible(Arrays.asList(actions).contains(ActivityChangeAction.ANIMATE), onComplete);
+				scrollToVisible(Arrays.asList(actions).contains(ActivityChangeAction.ANIMATE), onVisible);
+				internalPopulatePage(true, new Runnable() {
+
+					@Override
+					public void run() {
+						if(onLoaded != null) {
+							onLoaded.run();
+						}
+					}
+					
+				});
 			}
 			
 		};
@@ -254,6 +281,11 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	@Override
 	public int compareTo(ResultsPage<ImageResult> other) {
 		return other.getPageIndex() - PAGE_IDX;
+	}
+	
+	@Override
+	public boolean isClosed() {
+		return !isOpen;
 	}
 
 	@Override
@@ -339,5 +371,46 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		}
 		resultsTblModel.setRowCount(ROW_COUNT);
 		RESULTS_TBL.setRowHeight(cellSize.height);
+	}
+	
+	private class AnimationFrameUpdater implements ActionListener {
+		
+		private final Runnable ON_COMPLETE;
+		private final int ANIM_FRAME_DELTA;
+		
+		public AnimationFrameUpdater(Runnable onComplete) {
+			ON_COMPLETE = onComplete;
+			Rectangle visibleRect = RESULTS_TBL.getVisibleRect();
+			// Update the target rectangle.
+			Rectangle targetRect = RESULTS_TBL.getVisibleRect();
+			Rectangle pageAnchor = RESULTS_TBL.getCellRect(0, COL_COUNT * PAGE_IDX, false);
+			targetRect.x = pageAnchor.x;
+			targetRect.y = pageAnchor.y;
+			ANIM_FRAME_DELTA = (int) ((double) Math.abs(targetRect.x - visibleRect.x) / (ANIM_DURATION * ANIM_FRAMERATE));
+		}
+		
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			Rectangle visibleRect = RESULTS_TBL.getVisibleRect();
+			// Update the target rectangle.
+			Rectangle targetRect = RESULTS_TBL.getVisibleRect();
+			Rectangle pageAnchor = RESULTS_TBL.getCellRect(0, COL_COUNT * PAGE_IDX, false);
+			targetRect.x = pageAnchor.x;
+			targetRect.y = pageAnchor.y;
+			// Move toward the target rectangle.
+			if(Math.abs(targetRect.x - visibleRect.x) < ANIM_FRAME_DELTA) {
+				// If we have reached the end of the animation, stop the timer.
+				visibleRect = targetRect;
+				ANIM_TIMER.stop();
+				ANIM_TIMER = null;
+				if(ON_COMPLETE != null) {
+					ON_COMPLETE.run();
+				}
+			} else {
+				visibleRect.x += (visibleRect.x < targetRect.x ? ANIM_FRAME_DELTA : -ANIM_FRAME_DELTA);
+			}
+			RESULTS_TBL.scrollRectToVisible(visibleRect);
+			
+		}
 	}
 }

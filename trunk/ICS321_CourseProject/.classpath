@@ -5,5 +5,10 @@
 	<classpathentry kind="lib" path="rsrc"/>
 	<classpathentry kind="lib" path="rsrc/mysql-connector-java-5.1.26/mysql-connector-java-5.1.0-bin.jar"/>
 	<classpathentry kind="lib" path="rsrc/jsoup/jsoup-1.7.2.jar"/>
+	<classpathentry kind="lib" path="rsrc/commons-lang3-3.1/commons-lang3-3.1.jar" sourcepath="rsrc/commons-lang3-3.1/commons-lang3-3.1-sources.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/ICS321_CourseProject/rsrc/commons-lang3-3.1/commons-lang3-3.1-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -10,10 +10,6 @@ import edu.hawaii.ics321f13.model.interfaces.Traversable;
 
 public interface ImageLoader extends Closeable {
 	
-	int loadImages(Iterable<ImageResult> source, int loadCount, Dimension targetImageSize);
-	
-	void addImageLoadListener(ImageLoadListener listener);
-	
-	void removeImageLoadListener(ImageLoadListener listener);
+	void loadImages(Iterable<ImageResult> source, int loadCount, Dimension targetImageSize, ImageLoadListener observer);
 
 }

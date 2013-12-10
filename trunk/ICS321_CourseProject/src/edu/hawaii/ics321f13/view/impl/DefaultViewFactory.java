@@ -13,7 +13,7 @@ public class DefaultViewFactory implements ViewFactory {
 	 */
 	@Override
 	public View createView() {
-		DefaultView view = new DefaultView(new SynchronousImageLoader());
+		DefaultView view = new DefaultView(new AsyncImageLoader());
 		view.setVisible(true);
 		return view;
 	}

@@ -17,8 +17,10 @@ public interface ResultsPage<E> extends Comparable<ResultsPage<E>>, Closeable {
 	boolean hasPreviousPage();
 	
 	ResultsPage<E> previousPage();
-
-	int populatePage();
+	
+	void populatePage();
+	
+	void populatePage(Runnable onComplete);
 
 	void scrollToVisible(boolean animate);
 	
@@ -26,6 +28,8 @@ public interface ResultsPage<E> extends Comparable<ResultsPage<E>>, Closeable {
 	
 	void setActive(ActivityChangeAction... actions);
 	
-	void setActive(Runnable onComplete, ActivityChangeAction... actions);
+	void setActive(Runnable onLoaded, Runnable onVisible, ActivityChangeAction... actions);
+
+	boolean isClosed();
 	
 }

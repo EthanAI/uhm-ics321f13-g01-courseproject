@@ -15,7 +15,7 @@ public class MySQLDatabase implements Database {
 	private final Connection CONN;
 	private boolean isClosed = false;
 	
-	/*
+	/**
 	 * Constructor establishes connection to the database using the correct JDBC URL and the supplied <code>LoginInfo</code> and port
 	 * 
 	 * @param login - the <code>LoginInfo</code> for the database
@@ -39,7 +39,7 @@ public class MySQLDatabase implements Database {
 		}
 	}
 
-	/*
+	/**
 	 * Executes a query on the database and returns the results in a <code>ResultSet</code>
 	 * 
 	 * @param sql - String holding the text of the SQL code query

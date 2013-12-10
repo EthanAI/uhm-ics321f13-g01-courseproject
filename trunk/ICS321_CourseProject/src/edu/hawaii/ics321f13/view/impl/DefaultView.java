@@ -255,19 +255,33 @@ public class DefaultView extends JFrame implements View {
 					return;
 				}
 				// Go to the previous page.
-				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
+				final ResultsPage<ImageResult> PENDING_CLOSE = 
+						(currentPage.hasNextPage() ? currentPage.nextPage() : null);
 				if(currentPage.hasPreviousPage()) {
 					currentPage = currentPage.previousPage();
 					btnNext.setEnabled(currentPage.hasNextPage());
 					btnPrevious.setEnabled(currentPage.hasPreviousPage());
-					setBusy(true);
+					if(currentPage.isClosed()) {
+						setBusy(true);
+					}
 					currentPage.setActive(new Runnable() {
 
 						@Override
 						public void run() {
+							setBusy(false);
+							if(currentPage.hasPreviousPage() && currentPage.previousPage().isClosed()) {
+								currentPage.previousPage().populatePage(); //TODO Get preloading previous/next page working.
+							}
+						}
+						
+					}, new Runnable() {
+
+						@Override
+						public void run() {
 							try {
-								setBusy(false);
-								PREV_PAGE.close();
+								if(PENDING_CLOSE != null) {
+									PENDING_CLOSE.close();
+								}
 							} catch (IOException e) {
 								// Should never happen because default close implementation does not throw exception.
 								// This exception is carried over from java.io.Closeable interface.
@@ -277,7 +291,7 @@ public class DefaultView extends JFrame implements View {
 							}
 						}
 						
-					}, ActivityChangeAction.CONCURRENT);
+					}, ActivityChangeAction.CONCURRENT, ActivityChangeAction.ANIMATE);
 				} else {
 					// Beep when the user tries to go past valid page range.
 					Toolkit.getDefaultToolkit().beep();
@@ -299,19 +313,33 @@ public class DefaultView extends JFrame implements View {
 					return;
 				}
 				// Go to the next page.
-				final ResultsPage<ImageResult> PREV_PAGE = currentPage;
+				final ResultsPage<ImageResult> PENDING_CLOSE = 
+						(currentPage.hasPreviousPage() ? currentPage.previousPage() : null);
 				if(currentPage.hasNextPage()) {
 					currentPage = currentPage.nextPage();
 					btnNext.setEnabled(currentPage.hasNextPage());
 					btnPrevious.setEnabled(currentPage.hasPreviousPage());
-					setBusy(true);
+					if(currentPage.isClosed()) {
+						setBusy(true);
+					}
 					currentPage.setActive(new Runnable() {
 
 						@Override
 						public void run() {
+							setBusy(false);
+							if(currentPage.hasNextPage() && currentPage.nextPage().isClosed()) {
+								currentPage.nextPage().populatePage(); // TODO Get preloading previous/next page working.
+							}
+						}
+						
+					}, new Runnable() {
+
+						@Override
+						public void run() {
 							try {
-								setBusy(false);
-								PREV_PAGE.close();
+								if(PENDING_CLOSE != null) {
+									PENDING_CLOSE.close();
+								}
 							} catch (IOException e) {
 								// Should never happen because default close implementation does not throw exception.
 								// This exception is carried over from java.io.Closeable interface.
@@ -321,7 +349,7 @@ public class DefaultView extends JFrame implements View {
 							}
 						}
 						
-					}, ActivityChangeAction.CONCURRENT);
+					}, ActivityChangeAction.CONCURRENT, ActivityChangeAction.ANIMATE);
 				} else {
 					// Beep when the user tries to go past valid page range.
 					Toolkit.getDefaultToolkit().beep();
@@ -514,9 +542,12 @@ public class DefaultView extends JFrame implements View {
 			@Override
 			public void run() {
 				setBusy(false);
+				if(currentPage.hasNextPage()) {
+					currentPage.nextPage().populatePage();
+				}
 			}
 			
-		}, ActivityChangeAction.CONCURRENT);
+		}, null, ActivityChangeAction.CONCURRENT);
 	}
 
 	@Override
@@ -722,7 +753,7 @@ public class DefaultView extends JFrame implements View {
 							forceDispLocal = true;
 						}
 					}
-				} 
+				}
 				// For single clicks, display the preview pane. 
 				if(forceDispLocal || (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() % 2 != 0)) {
 					final Dimension PREVIEW_SIZE = getPreviewSize();
@@ -780,9 +811,7 @@ public class DefaultView extends JFrame implements View {
 				ArrayList<ImageResult> iterable = new ArrayList<ImageResult>();
 				iterable.add((ImageResult) cellValue);
 				
-				LOADER.addImageLoadListener(listener);
-				LOADER.loadImages(iterable, 1, targetImageSize);
-				LOADER.removeImageLoadListener(listener);
+				LOADER.loadImages(iterable, 1, targetImageSize, listener);
 			} // If the cellValue is null or not an instance of ImageResult, simply do not display a preview.
 		}
 		
