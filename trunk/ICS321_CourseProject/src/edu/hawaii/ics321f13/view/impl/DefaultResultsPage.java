@@ -185,7 +185,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			}
 			
 			@Override
-			public void onError(Exception error) {error.printStackTrace();
+			public void onError(Exception error) {
 				resultsTblModel.setValueAt(UIManager.getIcon("OptionPane.warningIcon"), 
 						row.get(), colOffset + col.get());
 				if(col.get() >= COL_COUNT - 1) {
