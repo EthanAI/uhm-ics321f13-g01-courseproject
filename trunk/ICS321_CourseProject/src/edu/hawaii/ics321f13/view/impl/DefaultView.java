@@ -531,10 +531,10 @@ public class DefaultView extends JFrame implements View {
 		if(imageSource.index() > 0 || imageSource.hasNext()) {
 			currentPage = new DefaultResultsPage(
 					0, STD_ROW_COUNT, STD_COL_COUNT, imageSourceTraversable, LOADER, tblImageResults);
+			setBusy(true);
 		} else {
 			currentPage = new EmptyResultSetPage("No results found", tblImageResults, STD_ROW_COUNT, STD_COL_COUNT);
 		}
-		setBusy(true);
 		btnNext.setEnabled(currentPage.hasNextPage());
 		btnPrevious.setEnabled(currentPage.hasPreviousPage());
 		currentPage.setActive(new Runnable() {
