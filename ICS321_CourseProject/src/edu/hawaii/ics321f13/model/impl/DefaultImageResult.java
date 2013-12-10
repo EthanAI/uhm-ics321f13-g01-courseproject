@@ -4,33 +4,43 @@ import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
+import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Vector;
+
 import javax.imageio.ImageIO;
 
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
 
 public class DefaultImageResult implements ImageResult {
 	
-	private final int INDEX_MEDIUM_IMAGE = 0;
-	
 	private final URL IMAGE_URL;
 	private final URL ARTICLE_URL;
 	private final String ARTICLE_TITLE;
 	private final String ARTICLE_ABSTRACT;
 	
-	private BufferedImage imageCache = null;
-	private Dimension imageCacheOriginalSize = null;
-	private ImageTransformer[] xformsCache = null;
-	private ImageReference[] availableImages = null;
+	private ImageCache cache = null;
 	
 	/**
 	 * Simplified constructor for DefaultImageResult class
@@ -62,8 +72,9 @@ public class DefaultImageResult implements ImageResult {
 		// When the user scrolls away from this image, while we don't need the image anymore, we do need the
 		// metadata about the image which is stored in this class. So allow the image itself to be garbage-collected
 		// but keep the metadata alive. 
-		imageCache = null;
-		xformsCache = null;
+		if(cache != null) {
+			cache.close();
+		}
 	}
 	
 	/**
@@ -79,22 +90,10 @@ public class DefaultImageResult implements ImageResult {
 
 	@Override
 	public BufferedImage getImage(Dimension targetSize,	ImageTransformer... transformers) throws IOException {
-		// If we have not done so already, load all available images.
-		if(availableImages == null) {
-			availableImages = loadAvailableImages();
-			if(availableImages.length <= 0) {
-				throw new FileNotFoundException("no images found at the specified URL");
-			}
+		if(cache == null) {
+			cache = new ImageCache();
 		}
-		// Determine whether or not we need to refresh the image cache.
-		if(imageCache == null || !imageCacheOriginalSize.equals(findNearestAvailableSize(targetSize).getImageSize()) 
-				|| !xformsDeepEquals(xformsCache, transformers)) {
-			imageCache = findNearestAvailableSize(targetSize).getImage();
-			imageCacheOriginalSize = new Dimension(imageCache.getWidth(), imageCache.getHeight());
-			xformsCache = transformers;
-			imageCache = createComposite(imageCache, transformers);
-		}
-		return imageCache;
+		return cache.getImage(targetSize, transformers);
 	}
 
 	/**
@@ -107,7 +106,7 @@ public class DefaultImageResult implements ImageResult {
 
 	@Override
 	public URL getImageURL(Dimension targetSize) {
-		return findNearestAvailableSize(targetSize).getImageURL();
+		return cache.getImageURL(targetSize);
 	}
 
 	/**
@@ -134,145 +133,354 @@ public class DefaultImageResult implements ImageResult {
 	public URL getArticleURL() {
 		return ARTICLE_URL;
 	}
-
-	@Override
-	public boolean isLoaded() {
-		return imageCache != null;
-	}
 	
-	/**
-	 * Returns a boolean to determine if the two xforms1 and xforms2 from <code>ImageTransformer</code> are the same
-	 * 
-	 * @param xforms1
-	 * @param xforms2
-	 * @return boolean
-	 */	
-	private boolean xformsDeepEquals(ImageTransformer[] xforms1, ImageTransformer[] xforms2) {
-		if((xforms1 == null && xforms2 == null) 
-				|| (xforms1 != null && xforms1.length == 0 && xforms2 == null) 
-				|| (xforms2 != null && xforms1 == null && xforms2.length == 0)
-				|| (xforms1 != null && xforms1.length == 0 && xforms2 != null && xforms2.length == 0)) {
-			return true;
-		} else if((xforms1 == null && xforms2 != null)
-				|| xforms1 != null && xforms2 == null
-				|| xforms1.length != xforms2.length) {
-			return false;
-		} else {
-			for(int i = 0; i < xforms1.length; i++) {
-				if((xforms1[i] == null && xforms2[i] != null) 
-						|| (xforms1[i] != null && xforms2[i] == null) 
-						|| (xforms1[i] != null && xforms2[i] != null && !xforms1[i].equals(xforms2[i]))) {
-					return false;
+	private class ImageCache implements Closeable {
+		
+		private final Vector<CachedImage> NO_XFORMS = new Vector<CachedImage>();
+		private final Vector<CachedImage> XFORMED = new Vector<CachedImage>();
+		private final ImageReference[] AVAILABLE_IMG_REFS;
+		
+		public ImageCache() throws IOException {
+			AVAILABLE_IMG_REFS = loadAvailableImages();
+		}
+		
+		public BufferedImage getImage(Dimension targetSize, ImageTransformer...xforms) throws IOException {
+			ImageReference nearestImgSize = findNearestAvailableSize(targetSize);
+			if(xforms != null && xforms.length > 0) {
+				// Check if there is an image in the cache of the correct size  and with the same xforms.
+				for(int i = 0; i < XFORMED.size(); i++) {
+					if(nearestImgSize.getImageSize().equals(XFORMED.get(i).getImageSize()) 
+							&& xformsDeepEquals(xforms, XFORMED.get(i).getXforms())) {
+						return XFORMED.get(i).getImage();
+					}
 				}
 			}
-			return true;
+			// If we haven't returned by now, check if we have an un-transformed image of the correct size in the cache.
+			BufferedImage noXforms = null;
+			for(int i = 0; i < NO_XFORMS.size(); i++) {
+				if(nearestImgSize.getImageSize().equals(NO_XFORMS.get(i).getImageSize())) {
+					noXforms = NO_XFORMS.get(i).getImage();
+				}
+			}
+			// If we don't load the image and cache it. 
+			if(noXforms == null) {
+				noXforms = nearestImgSize.getImage();
+				NO_XFORMS.add(new CachedImage(noXforms, nearestImgSize.getImageSize()));
+			}
+			// Apply any xforms, if necessary and cache the result.
+			BufferedImage xformed = null;
+			if(xforms != null && xforms.length > 0) {
+				xformed = createComposite(noXforms, xforms);
+				XFORMED.add(new CachedImage(xformed, nearestImgSize.getImageSize(), xforms));
+			} else {
+				xformed = noXforms;
+			}
+			// Return the result.
+			return xformed;
 		}
-	}
-	
-	private BufferedImage createComposite(BufferedImage source, ImageTransformer...transformers) {
-		BufferedImage copy = cloneImage(source);
-		for(int i = 0; i < transformers.length; i++) {
-			copy = transformers[i].createComposite(copy);
+		
+		public URL getImageURL(Dimension targetSize) {
+			return findNearestAvailableSize(targetSize).getImageURL();
 		}
-		return copy;
-	}
-	
-	private BufferedImage cloneImage(BufferedImage source) {
-		ColorModel colorModel = source.getColorModel();
-		boolean premultipliedAlpha = source.isAlphaPremultiplied();
-		WritableRaster raster = source.copyData(null);
-		return new BufferedImage(colorModel, raster, premultipliedAlpha, null);
-	}
-	
-	private ImageReference findNearestAvailableSize(Dimension targetSize) {
-		// TODO Implement ordering of the ImageReference objects by area and then using binary search.
-		// Parameter validation.
-		Objects.requireNonNull(availableImages);
-		if(availableImages.length <= 0 || availableImages[0] == null) {
-			throw new NoSuchElementException();
+		
+		@Override
+		public void close() throws IOException {
+			NO_XFORMS.clear();
+			XFORMED.clear();
 		}
-		// Linear search for nearest size.
-		long targetArea = (targetSize == null ? Long.MAX_VALUE : targetSize.width * targetSize.height);
-		int nearestIdx = 0;
-		long nearestAreaDiff = Math.abs(
-				targetArea - (availableImages[0].getImageSize().width * availableImages[0].getImageSize().height));
-		for(int i = 0; i < availableImages.length; i++) {
-			long currentAreaDiff = Math.abs(
-					targetArea - (availableImages[i].getImageSize().width * availableImages[i].getImageSize().height));
-			if(currentAreaDiff < nearestAreaDiff) {
-				nearestIdx = i;
-				nearestAreaDiff = currentAreaDiff;
+		
+		private boolean xformsDeepEquals(ImageTransformer[] xforms1, ImageTransformer[] xforms2) {
+			if((xforms1 == null && xforms2 == null) 
+					|| (xforms1 != null && xforms1.length == 0 && xforms2 == null) 
+					|| (xforms2 != null && xforms1 == null && xforms2.length == 0)
+					|| (xforms1 != null && xforms1.length == 0 && xforms2 != null && xforms2.length == 0)) {
+				return true;
+			} else if((xforms1 == null && xforms2 != null)
+					|| xforms1 != null && xforms2 == null
+					|| xforms1.length != xforms2.length) {
+				return false;
+			} else {
+				for(int i = 0; i < xforms1.length; i++) {
+					if((xforms1[i] == null && xforms2[i] != null) 
+							|| (xforms1[i] != null && xforms2[i] == null) 
+							|| (xforms1[i] != null && xforms2[i] != null && !xforms1[i].equals(xforms2[i]))) {
+						return false;
+					}
+				}
+				return true;
 			}
 		}
-		return availableImages[nearestIdx];
-	}
-	
-	private ImageReference[] loadAvailableImages() throws IOException {
-		try {
+		
+		private BufferedImage createComposite(BufferedImage source, ImageTransformer...transformers) {
+			BufferedImage copy = new BufferedImage(
+					source.getColorModel(), source.copyData(null), source.isAlphaPremultiplied(), null);
+			for(int i = 0; i < transformers.length; i++) {
+				copy = transformers[i].createComposite(copy);
+			}
+			return copy;
+		}
+		
+		// TODO Delete if is unused.
+		private BufferedImage cloneImage(BufferedImage source) {
+			return new BufferedImage(
+					source.getColorModel(), source.copyData(null), source.isAlphaPremultiplied(), null);
+		}
+		
+		private ImageReference findNearestAvailableSize(Dimension targetSize) {
+			// TODO Implement ordering of the ImageReference objects by area and then using binary search.
+			// Parameter validation.
+			Objects.requireNonNull(AVAILABLE_IMG_REFS);
+			if(AVAILABLE_IMG_REFS.length <= 0 || AVAILABLE_IMG_REFS[0] == null) {
+				throw new NoSuchElementException();
+			}
+			// Linear search for nearest size.
+			long targetArea = (targetSize == null ? Long.MAX_VALUE : targetSize.width * targetSize.height);
+			int nearestIdx = 0;
+			long nearestAreaDiff = Math.abs(
+					targetArea - (AVAILABLE_IMG_REFS[0].getImageSize().width * AVAILABLE_IMG_REFS[0].getImageSize().height));
+			for(int i = 0; i < AVAILABLE_IMG_REFS.length; i++) {
+				long currentAreaDiff = Math.abs(
+						targetArea - (AVAILABLE_IMG_REFS[i].getImageSize().width * AVAILABLE_IMG_REFS[i].getImageSize().height));
+				if(currentAreaDiff < nearestAreaDiff) {
+					nearestIdx = i;
+					nearestAreaDiff = currentAreaDiff;
+				}
+			}
+			return AVAILABLE_IMG_REFS[nearestIdx];
+		}
+		
+		private ImageReference[] loadAvailableImages() throws IOException {
 			//Jsoup closes its connection after it downloads the data.
-			Document doc = Jsoup.connect(getImageURL().toString()).get();
-			// Possible to get other sizes of the image by venturing into .get(i) territory.
-			Element image = doc.select("img").get(INDEX_MEDIUM_IMAGE); 
-			String imageUrlString = image.absUrl("src");
-			/*  
-			//requires function passed image id name, not image url can get smaller images. Maybe nice for V2.0 of the project
-			imageUrlText = image.absUrl("src");
-			for(int i = INDEX_MEDIUM_IMAGE + 1; !imageUrlText.contains(imageName) && i < doc.select("img").size(); i++) { 
-				//check we didn't run out of links
-				image = doc.select("img").get(i);
-				imageUrlText = image.absUrl("src");
+			Document imgWebPage = Jsoup.connect(DefaultImageResult.this.getImageURL().toString()).get();
+			
+			Collection<ImageReference> images = new LinkedHashSet<ImageReference>();
+			images.addAll(loadReferencesByTag(imgWebPage, "img", "src"));
+			images.addAll(loadReferencesByTag(imgWebPage, "a[href]", "href"));
+			if(images.isEmpty()) {
+				Element fallbackImgElmnt = imgWebPage.select("img").first();
+				if(fallbackImgElmnt != null) {
+					try {
+						Dimension fallbackImgSize = new Dimension();
+						fallbackImgSize.width = Integer.parseInt(fallbackImgElmnt.attr("width").replace(",", "").trim());
+						fallbackImgSize.height = Integer.parseInt(fallbackImgElmnt.attr("height").replace(",", "").trim());
+						URL fallbackImgURL = new URL(fallbackImgElmnt.absUrl("src"));
+						images.add(new ImageReference(fallbackImgURL, fallbackImgSize));
+					} catch(NumberFormatException | MalformedURLException e) {
+						System.out.println("Fallback image selection failed: " + getArticleTitle());
+					}
+				} else {
+					System.out.println("Fallback image selection failed: " + getArticleTitle());
+				}
 			}
-			*/
-			// TODO Get the image URL and image dimensions for all image sizes from the HTML (no downloading).
-			URL imageUrl = new URL(imageUrlString);
-			if(imageCache == null) {
-				// XXX Load image here to get dimensions before we implement loading of dimensions from HTML.
-				imageCache = ImageIO.read(imageUrl);
-				imageCacheOriginalSize = new Dimension(imageCache.getWidth(), imageCache.getHeight());
-				xformsCache = null;
-				
+			return images.toArray(new ImageReference[images.size()]);
+		}
+		
+		private Collection<ImageReference> loadReferencesByTag(Document page, String htmlTag, String urlAttribute) {
+			Collection<ImageReference> images = new LinkedHashSet<ImageReference>();
+			String[] supportedImgFormats = ImageIO.getReaderFileSuffixes();
+			String whDelimiter = "×";
+			String urlFilePrefix = "File:";
+			String unescFilename = StringEscapeUtils.unescapeHtml4(IMAGE_URL.getFile().substring(
+					IMAGE_URL.getFile().indexOf(urlFilePrefix) + urlFilePrefix.length()));
+			// Remove the filename extension to allow other image formats to be returned.
+			if(unescFilename.contains(".")) {
+				unescFilename = unescFilename.substring(0, unescFilename.lastIndexOf("."));
 			}
-			return new ImageReference[] {
-					new ImageReference(imageUrl, new Dimension(imageCache.getWidth(), imageCache.getHeight()))
-			};
-		} 
-		catch (IndexOutOfBoundsException e) { //will not be triggered while using doc.select("img").first(); implementation. If changed, should discuss how to handle exceptions
-			throw new IOException(e);
+			String unescFilenameAlt = unescFilename.replace("_", " ");
+			Elements imgElements = page.select(htmlTag);
+			for(Element img : imgElements) {
+				String unescImgHtml = StringEscapeUtils.unescapeHtml4(img.toString());
+				// Verify that we want the image.
+				if((!StringUtils.containsIgnoreCase(unescImgHtml, unescFilename) 
+						&& !StringUtils.containsIgnoreCase(unescImgHtml, unescFilenameAlt)) 
+						|| !(StringUtils.containsIgnoreCase(unescImgHtml, "pixels") 
+								|| (img.hasAttr("width") && img.hasAttr("height")))) {
+					continue;
+				}
+				// Now that we know that we do want the image, retreive the URL.
+				String imgAbsUrlStr = img.absUrl(urlAttribute);
+				URL imgAbsURL = null;
+				// Validate the URL.
+				if(imgAbsUrlStr == null || imgAbsUrlStr.isEmpty()) {
+					continue;
+				} else {
+					try {
+						imgAbsURL = new URL(imgAbsUrlStr);
+					} catch(MalformedURLException e) {
+						continue;	// Skip invalid URLs.
+					}
+				}
+				// Now we can assume that we have a valid image URL. Move on to retreiving the image height and width.
+				Dimension imgSize = null;
+				if(unescImgHtml.contains("pixels")) {
+					imgSize = getDimensionsNearDelimiter(unescImgHtml, whDelimiter);
+				} else {
+					try {
+						imgSize = new Dimension();
+						imgSize.width = Integer.parseInt(img.attr("width").replace("", "").trim());
+						imgSize.height = Integer.parseInt(img.attr("height").replace("", "").trim());
+					} catch(NumberFormatException e) {
+						continue;
+					}
+				}
+				// Validate all paramters and create the ImageReference object.
+				if(imgSize != null && imgSize.width > 0 && imgSize.height > 0 && imgAbsURL != null) {
+					// Ignore unsupported image formats.
+					String filenameExt = (imgAbsURL.getFile().contains(".") ? 
+							imgAbsURL.getFile().substring(imgAbsURL.getFile().lastIndexOf(".") + 1) : "");
+					boolean isFormatSupported = false;
+					for(String supportedExt : supportedImgFormats) {
+						if(filenameExt.equalsIgnoreCase(supportedExt)) {
+							isFormatSupported = true;
+							break;
+						}
+					}
+					if(isFormatSupported) {
+						images.add(new ImageReference(imgAbsURL, imgSize));
+					}			}
+			}
+			return images;
 		}
-	}
-	
-	private class ImageReference {
 		
-		private final URL IMAGE_URL;
-		private final Dimension IMAGE_SIZE;
-		
-		/**
-		 * Constructor for ImageReference class
-		 * 
-		 * @param imageSize
-		 * @param imageURL
-		 */
-		public ImageReference(URL imageUrl, Dimension imageSize) {
-			IMAGE_URL = Objects.requireNonNull(imageUrl);
-			IMAGE_SIZE = Objects.requireNonNull(imageSize);
+		private Dimension getDimensionsNearDelimiter(String input, String delimiter) {
+			// Parameter validation.
+			if(!Objects.requireNonNull(input).contains(Objects.requireNonNull(delimiter))) {
+				throw new IllegalArgumentException(String.format(
+						"delimiter '%s' must be substring of input string: %s", delimiter, input));
+			}
+			char[] inputAry = input.toCharArray();
+			int delimiterIdx = input.indexOf(delimiter);
+			StringBuilder strBuf = new StringBuilder();
+			boolean isReading = false;
+			Dimension rtnDim = new Dimension();
+			// Find the width.
+			for(int i = delimiterIdx; i >= 0; i--) {
+				if(Character.isDigit(inputAry[i])) {
+					isReading = true;
+					strBuf.insert(0, inputAry[i]);
+				} else if(isReading && inputAry[i] != ',') {
+					// If we are currently reading and encounter a non-comma/digit character, stop reading.
+					break;
+				}
+			}
+			try {
+				rtnDim.width = Integer.parseInt(strBuf.toString().trim());
+			} catch(NumberFormatException e) {
+				rtnDim.width = -1;
+			}
+			// Reset the variables before reading the height.
+			isReading = false;
+			strBuf = new StringBuilder();
+			// Find the height.
+			for(int i = delimiterIdx + delimiter.length(); i < inputAry.length; i++) {
+				if(Character.isDigit(inputAry[i])) {
+					isReading = true;
+					strBuf.append(inputAry[i]);
+				} else if(isReading && inputAry[i] != ',') {
+					// If we are currently reading and encounter a non-comma/digit character, stop reading.
+					break;
+				}
+			}
+			try {
+				rtnDim.height = Integer.parseInt(strBuf.toString().trim());
+			} catch(NumberFormatException e) {
+				rtnDim.height = -1;
+			}
+			return rtnDim;
 		}
 		
-		public BufferedImage getImage() throws IOException {
-			return ImageIO.read(getImageURL());
+		private class CachedImage {
+			
+			private final BufferedImage IMG_CACHE;
+			private final ImageTransformer[] XFORMS;
+			private final Dimension IMG_SIZE;
+			
+			public CachedImage(BufferedImage imgCache, Dimension originalImgSize, ImageTransformer...xforms) {
+				IMG_CACHE = Objects.requireNonNull(imgCache);
+				XFORMS = (xforms == null ? new ImageTransformer[0] : xforms);
+				IMG_SIZE = Objects.requireNonNull(originalImgSize);
+			}
+			
+			public BufferedImage getImage() {
+				return IMG_CACHE;
+			}
+			
+			public ImageTransformer[] getXforms() {
+				return XFORMS;
+			}
+			
+			public Dimension getImageSize() {
+				return IMG_SIZE;
+			}
+			
 		}
-		/*
-		 * Simple getmethod for the image url 
-		 * @return IMAGE_URL
-		 */			
-		public URL getImageURL() {
-			return IMAGE_URL;
-		}
-		/*
-		 * Simple getmethod for the image Size 
-		 * @return IMAGE_SIZE
-		 */		
-		public Dimension getImageSize() {
-			return IMAGE_SIZE;
+		
+		private class ImageReference implements Comparable<ImageReference> {
+			
+			private final URL IMAGE_URL;
+			private final Dimension IMAGE_SIZE;
+			
+			public ImageReference(URL imageUrl, Dimension imageSize) {
+				IMAGE_URL = Objects.requireNonNull(imageUrl);
+				IMAGE_SIZE = Objects.requireNonNull(imageSize);
+			}
+			
+			public BufferedImage getImage() throws IOException {
+				return ImageIO.read(getImageURL());
+			}
+			
+			public URL getImageURL() {
+				return IMAGE_URL;
+			}
+			
+			public Dimension getImageSize() {
+				return IMAGE_SIZE;
+			}
+			
+			/**
+			 * Compares <i>only</i> the size of this <code>ImageReference</code> against the <code>Dimension</code>
+			 * returned by <code>((ImageResult) other).getImageSize()</code> (that is, if <code>other</code> is an instance of
+			 * <code>ImageReference</code>). This is because, for the purposes of image loading, since the sizes of the
+			 * image files are unknown, two image files with the same dimensions are equivalent, in terms of the time
+			 * required for them to download.
+			 * 
+			 * If <code>other</code> is <code>null</code> or otherwise <i>not</i> an instance of 
+			 * <code>ImageReference</code>, <code>false</code> is returned.
+			 * 
+			 * @return <code>true</code> if the two objects are equivalent as defined above, <code>false</code> otherwise.
+			 */
+			@Override
+			public boolean equals(Object other) {
+				if(other instanceof ImageReference) {
+					return ((ImageReference) other).getImageSize().equals(getImageSize());
+				} else {
+					return false;	// Note: instanceof checks for null pointer.
+				}
+			}
+			
+			/**
+			 * Compares <i>only</i> the size of this <code>ImageReference</code> against the <code>Dimension</code>
+			 * returned by <code>((ImageResult) other).getImageSize()</code> (that is, if <code>other</code> is an instance of
+			 * <code>ImageReference</code>). This is because, for the purposes of image loading, since the sizes of the
+			 * image files are unknown, two image files with the same dimensions are equivalent, in terms of the time
+			 * required for them to download.
+			 * 
+			 * If <code>other</code> is <code>null</code> or otherwise <i>not</i> an instance of 
+			 * <code>ImageReference</code>, <code>false</code> is returned.
+			 * 
+			 * @param other - the <code>ImageResult</code> against which this object is being compared.
+			 */
+			@Override
+			public int compareTo(ImageReference other) {
+				if(other == null) {
+					return 1; // Current object is always greater than null reference.
+				}
+				long area = IMAGE_SIZE.width * IMAGE_SIZE.height;
+				long otherArea = other.getImageSize().width * other.getImageSize().height;
+				long areaDiff = area - otherArea;
+				return (areaDiff > Integer.MAX_VALUE ? Integer.MAX_VALUE : 
+					(areaDiff < Integer.MIN_VALUE ? Integer.MIN_VALUE : (int) areaDiff));
+			}
 		}
 		
 	}
