@@ -35,7 +35,7 @@ public class DefaultSearchableModel implements SearchableModel {
 	}
 	
 	private final Database DATABASE;
-	private String TITLE_IMAGE_TABLE  = "test_table_1"; //probably this needs to get moved into MySQLDatabase instead
+	private String TITLE_IMAGE_TABLE  = "imagetable"; //probably this needs to get moved into MySQLDatabase instead
 	
 	private boolean isClosed = false;
 	
@@ -86,6 +86,14 @@ public class DefaultSearchableModel implements SearchableModel {
 			if(constraint.equals(ResultConstraint.CONTAINS)) {
 				sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
 						" WHERE title LIKE '%" + key + "%'"; 	// Loose matching. cat = catherine
+				
+				int maxImages = 40;
+				sql = "SELECT page_title, il_to FROM page, searchindex, imagelinks WHERE page_id=si_page and il_from = page_id " +
+						"AND il_to regexp '^[a-zA-Z0-9._,-]*$' AND MATCH(si_title) AGAINST('" + 
+						key + 
+						"' IN boolean MODE) AND page_is_redirect=0 AND page_namespace IN (0) limit " +
+						maxImages;
+				
 			} else if(constraint.equals(ResultConstraint.EQUALS)) {
 				sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
 						" WHERE title = '" + key + "'"; 		// Strict matching. Few results, but pure. Maybe good for testing?
