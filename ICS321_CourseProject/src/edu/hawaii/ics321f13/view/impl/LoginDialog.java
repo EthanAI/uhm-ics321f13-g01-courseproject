@@ -37,6 +37,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	
 	/**
 	 * Creates the login Gui
+	 * Asks for the username and password to login to the 
 	 * Constructor for the <code>LoginDialog</code>
 	 */
 	public LoginDialog() {
@@ -136,6 +137,7 @@ public class LoginDialog extends JDialog implements LoginPrompt {
 	
 	/**
 	 * Accessor that returns the <code>LoginInfo</code>
+	 * Sends the data from the over to the model which will enable us to access the data stored in the sql database
 	 * @return <code>LoginInfo</code>
 	 */
 	@Override
