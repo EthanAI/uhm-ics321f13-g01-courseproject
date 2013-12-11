@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
-import edu.hawaii.ics321f13.model.interfaces.Traversable;
-import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 
