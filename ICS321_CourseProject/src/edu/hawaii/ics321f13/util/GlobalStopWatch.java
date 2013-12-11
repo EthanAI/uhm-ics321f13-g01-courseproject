@@ -5,6 +5,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.time.StopWatch;
 
+/**
+ * Used for getting information and other metrics on the results ie: how long it takes to get a result from the program
+ *
+ */
 public class GlobalStopWatch {
 	
 	private static StopWatch timer = null;

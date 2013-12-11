@@ -14,6 +14,10 @@ import java.util.Objects;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 
+/**
+ * If the page is loading it will change the view to signify to the user that the program is busy
+ *
+ */
 public class BusyIndicatorLayer extends AbstractRenderableLayer {
 	
 	public enum Propery {INDICATOR_COLOR, TEXT_COLOR, TEXT_FONT, TEXT}
