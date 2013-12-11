@@ -87,7 +87,7 @@ public class DefaultSearchableModel implements SearchableModel {
 		if(resultType.equals(ImageResult.class)) {
 			// ------------> Strict Matching SQL Query <------------------
 			sql = "SELECT page_title, il_to FROM page, searchindex, imagelinks WHERE page_id=si_page and il_from = page_id " +
-					"AND il_to regexp '^[a-zA-Z0-9._,-]*$' AND MATCH(si_title) AGAINST('" + 
+					"AND il_to regexp '^[a-zA-Z0-9#&%._,-]*$' AND MATCH(si_title) AGAINST('" + 
 					key + 
 					"' IN boolean MODE) AND page_is_redirect=0 AND page_namespace IN (0) limit " +
 					maxImages;
