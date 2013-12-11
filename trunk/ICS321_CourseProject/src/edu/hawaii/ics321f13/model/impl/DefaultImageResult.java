@@ -1,22 +1,18 @@
 package edu.hawaii.ics321f13.model.impl;
 
 import java.awt.Dimension;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
 import java.io.Closeable;
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.Locale;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Vector;
@@ -132,6 +128,30 @@ public class DefaultImageResult implements ImageResult {
 	@Override
 	public URL getArticleURL() {
 		return ARTICLE_URL;
+	}
+
+	@Override
+	public DataFlavor[] getTransferDataFlavors() {
+		return new DataFlavor[] {DataFlavor.javaFileListFlavor};
+	}
+
+	@Override
+	public boolean isDataFlavorSupported(DataFlavor flavor) {
+		return flavor.equals(DataFlavor.javaFileListFlavor);
+	}
+
+	@Override
+	public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+		if(isDataFlavorSupported(flavor)) {
+			File tempFile = File.createTempFile("image_", ".png");
+			BufferedImage image = getImage();
+			ImageIO.write(image, "png", tempFile);
+			ArrayList<File> fileList = new ArrayList<File>();
+			fileList.add(tempFile);
+			return (List<?>) fileList;
+		} else {
+			throw new UnsupportedFlavorException(flavor);
+		}
 	}
 	
 	private class ImageCache implements Closeable {
@@ -262,8 +282,8 @@ public class DefaultImageResult implements ImageResult {
 							fallbackImgSize.width = Integer.parseInt(fallbackImgElmnt.attr("width").replace(",", "").trim());
 							fallbackImgSize.height = Integer.parseInt(fallbackImgElmnt.attr("height").replace(",", "").trim());
 						} catch(NumberFormatException e) {
-							fallbackImgSize.width = Integer.MAX_VALUE;
-							fallbackImgSize.height = Integer.MAX_VALUE;
+							fallbackImgSize.width = 0;
+							fallbackImgSize.height = 0;
 						}
 						images.add(new ImageReference(fallbackImgURL, fallbackImgSize));
 					} catch(MalformedURLException e) {

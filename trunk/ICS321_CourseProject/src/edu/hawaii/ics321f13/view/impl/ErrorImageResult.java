@@ -2,6 +2,8 @@ package edu.hawaii.ics321f13.view.impl;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
@@ -74,6 +76,24 @@ public class ErrorImageResult implements ImageResult {
 	@Override
 	public URL getArticleURL() {
 		return null;
+	}
+
+	@Override
+	public DataFlavor[] getTransferDataFlavors() {
+		// Dnd is not supported by the empty results page.
+		return new DataFlavor[0];
+	}
+
+	@Override
+	public boolean isDataFlavorSupported(DataFlavor flavor) {
+		// Dnd is not supported by the empty results page.
+		return false;
+	}
+
+	@Override
+	public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+		// Dnd is not supported by the empty results page.
+		throw new UnsupportedFlavorException(flavor);
 	}
 
 }

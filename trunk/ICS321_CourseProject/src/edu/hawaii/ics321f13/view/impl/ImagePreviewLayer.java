@@ -1,19 +1,11 @@
 package edu.hawaii.ics321f13.view.impl;
 
-import java.awt.AWTEvent;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Point;
-import java.io.IOException;
-import java.net.URL;
-
-import javax.imageio.ImageIO;
 import javax.swing.JComponent;
-import javax.swing.JLayer;
-import javax.swing.plaf.LayerUI;
 
 public class ImagePreviewLayer extends AbstractRenderableLayer {
 

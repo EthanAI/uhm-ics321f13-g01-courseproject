@@ -33,6 +33,16 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.JTextField;
 import java.awt.Font;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DragGestureEvent;
+import java.awt.dnd.DragGestureListener;
+import java.awt.dnd.DragSource;
+import java.awt.dnd.DragSourceDragEvent;
+import java.awt.dnd.DragSourceDropEvent;
+import java.awt.dnd.DragSourceEvent;
+import java.awt.dnd.DragSourceListener;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import javax.swing.SwingConstants;
@@ -47,7 +57,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -55,12 +64,10 @@ import java.awt.event.MouseEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -72,7 +79,6 @@ import java.util.TimerTask;
 import javax.swing.ScrollPaneConstants;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
-import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
 import edu.hawaii.ics321f13.util.GlobalStopWatch;
@@ -503,6 +509,63 @@ public class DefaultView extends JFrame implements View {
 			
 		});
 		
+		// Set up Drag n' Drop (DnD).
+		DragGestureListener tblDndListener = new DragGestureListener() {
+			
+			private final SizeNormalizationImageTransformer SIZE_NORMALIZER = new SizeNormalizationImageTransformer(64, 64);
+			
+			@SuppressWarnings("resource")
+			@Override
+			public void dragGestureRecognized(DragGestureEvent dge) {
+				Point dragOriginCell = new Point(tblImageResults.rowAtPoint(dge.getDragOrigin()), 
+						tblImageResults.columnAtPoint(dge.getDragOrigin()));
+				if(dragOriginCell.x < 0 || dragOriginCell.y < 0 || dragOriginCell.x >= tblImageResults.getRowCount() 
+						|| dragOriginCell.y >= tblImageResults.getColumnCount()) {
+					return;
+				}
+				Object dragOriginCellValue = tblImageResults.getValueAt(dragOriginCell.x, dragOriginCell.y);
+				if(!(dragOriginCellValue instanceof ImageResult)) {
+					return;
+				}
+				ImageResult dragOriginRslt = (ImageResult) dragOriginCellValue;
+				BufferedImage dragImage;
+				try {
+					dragImage = dragOriginRslt.getImage(new Dimension(0, 0), SIZE_NORMALIZER);
+				} catch (IOException e) {
+					return; // Abort dnd if the image cannot be fetched.
+				}
+				tblImageResults.clearSelection();
+				dge.startDrag(DragSource.DefaultCopyNoDrop, dragImage, new Point(5, 5), dragOriginRslt, 
+						new DragSourceListener() {
+
+							@Override
+							public void dragDropEnd(DragSourceDropEvent dsde) {
+							}
+
+							@Override
+							public void dragEnter(DragSourceDragEvent dsde) {
+								dsde.getDragSourceContext().setCursor(DragSource.DefaultCopyDrop);
+							}
+
+							@Override
+							public void dragExit(DragSourceEvent dse) {
+								dse.getDragSourceContext().setCursor(DragSource.DefaultCopyNoDrop);
+							}
+
+							@Override
+							public void dragOver(DragSourceDragEvent dsde) {
+							}
+
+							@Override
+							public void dropActionChanged(DragSourceDragEvent arg0) {
+							}
+					
+				});
+			}
+			
+		};
+		new DragSource().createDefaultDragGestureRecognizer(tblImageResults, DnDConstants.ACTION_COPY, tblDndListener);
+		
 		setLocationRelativeTo(null);
 	}
 
@@ -830,6 +893,8 @@ public class DefaultView extends JFrame implements View {
 	
 	private class ImageTableCellRenderer extends DefaultTableCellRenderer {
 		
+		/** Serialization support. */
+		private static final long serialVersionUID = 1L;
 		// Background color values.
 		protected final Color BG_UNSELECTED;
 		protected final Color BG_SELECTED;
@@ -942,6 +1007,8 @@ public class DefaultView extends JFrame implements View {
 	
 	private class MetroTextField extends JTextField {
 		
+		/** Serialization support. */
+		private static final long serialVersionUID = 1L;
 		// State constants. Opting for integer values here due to inner class restrictions.
 		private final int STATE_INACTIVE = -1;	// User is currently editing text.
 		private final int STATE_ROLLOVER = 0;	// Mouse is over component.
@@ -1344,6 +1411,7 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
+	@SuppressWarnings("unused")
 	private class DummySingletonTraversable implements Traversable<ImageResult> {
 		
 		private final Traverser<ImageResult> SINGLETON;
@@ -1364,6 +1432,7 @@ public class DefaultView extends JFrame implements View {
 		
 	}
 	
+	@SuppressWarnings("unused")
 	private class DummyTraverser implements Traverser<ImageResult> {
 		private java.util.Random rand = new java.util.Random();
 		private int currentIdx = 0;
@@ -1438,6 +1507,18 @@ public class DefaultView extends JFrame implements View {
 			public URL getArticleURL() {return null;}
 			public boolean isLoaded() {
 				return image != null;
+			}
+			@Override
+			public DataFlavor[] getTransferDataFlavors() {
+				return new DataFlavor[0];
+			}
+			@Override
+			public boolean isDataFlavorSupported(DataFlavor flavor) {
+				return false;
+			}
+			@Override
+			public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+				throw new UnsupportedFlavorException(flavor);
 			}
 			
 		}
