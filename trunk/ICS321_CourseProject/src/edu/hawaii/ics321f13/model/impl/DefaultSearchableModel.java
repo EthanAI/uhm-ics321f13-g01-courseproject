@@ -35,6 +35,7 @@ public class DefaultSearchableModel implements SearchableModel {
 	}
 	
 	private final Database DATABASE;
+	@SuppressWarnings("unused") // Used with the loose matching SQL query (commented out).
 	private String TITLE_IMAGE_TABLE  = "imagetable"; //probably this needs to get moved into MySQLDatabase instead
 	
 	private boolean isClosed = false;
