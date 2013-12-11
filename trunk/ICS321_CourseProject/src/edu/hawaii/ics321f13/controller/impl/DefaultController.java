@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import edu.hawaii.ics321f13.controller.interfaces.Controller;
 import edu.hawaii.ics321f13.model.interfaces.DataModelFactory;
@@ -13,6 +14,7 @@ import edu.hawaii.ics321f13.model.interfaces.LoginPrompt;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.SearchableModel;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
+import edu.hawaii.ics321f13.util.GlobalStopWatch;
 import edu.hawaii.ics321f13.view.interfaces.View;
 import edu.hawaii.ics321f13.view.interfaces.View.ViewEventType;
 import edu.hawaii.ics321f13.view.interfaces.ViewFactory;
@@ -84,7 +86,12 @@ public class DefaultController implements Controller<ImageResult> {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if(e.getID() == ViewEventType.QUERY.getID()) {
+					// Timing code.
+					GlobalStopWatch.start();
 					Traversable<ImageResult> queryResults = onQuery(Objects.requireNonNull(e.getActionCommand()));
+					GlobalStopWatch.stop();
+					GlobalStopWatch.printElapsedTime("Query completed in ", ".", TimeUnit.MILLISECONDS);
+					GlobalStopWatch.start();
 					VIEW.setImageSource(queryResults);
 				} else if(e.getID() == ViewEventType.CLOSE.getID()) {
 					onClose();

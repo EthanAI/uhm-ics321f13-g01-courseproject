@@ -212,18 +212,13 @@ public class DefaultImageResult implements ImageResult {
 		}
 		
 		private BufferedImage createComposite(BufferedImage source, ImageTransformer...transformers) {
+			// Make a copy of the source image so that we do not alter it.
 			BufferedImage copy = new BufferedImage(
 					source.getColorModel(), source.copyData(null), source.isAlphaPremultiplied(), null);
 			for(int i = 0; i < transformers.length; i++) {
 				copy = transformers[i].createComposite(copy);
 			}
 			return copy;
-		}
-		
-		// TODO Delete if is unused.
-		private BufferedImage cloneImage(BufferedImage source) {
-			return new BufferedImage(
-					source.getColorModel(), source.copyData(null), source.isAlphaPremultiplied(), null);
 		}
 		
 		private ImageReference findNearestAvailableSize(Dimension targetSize) {
@@ -259,17 +254,27 @@ public class DefaultImageResult implements ImageResult {
 			if(images.isEmpty()) {
 				Element fallbackImgElmnt = imgWebPage.select("img").first();
 				if(fallbackImgElmnt != null) {
+					URL fallbackImgURL = null;
 					try {
+						fallbackImgURL = new URL(fallbackImgElmnt.absUrl("src"));
 						Dimension fallbackImgSize = new Dimension();
-						fallbackImgSize.width = Integer.parseInt(fallbackImgElmnt.attr("width").replace(",", "").trim());
-						fallbackImgSize.height = Integer.parseInt(fallbackImgElmnt.attr("height").replace(",", "").trim());
-						URL fallbackImgURL = new URL(fallbackImgElmnt.absUrl("src"));
+						try {
+							fallbackImgSize.width = Integer.parseInt(fallbackImgElmnt.attr("width").replace(",", "").trim());
+							fallbackImgSize.height = Integer.parseInt(fallbackImgElmnt.attr("height").replace(",", "").trim());
+						} catch(NumberFormatException e) {
+							fallbackImgSize.width = Integer.MAX_VALUE;
+							fallbackImgSize.height = Integer.MAX_VALUE;
+						}
 						images.add(new ImageReference(fallbackImgURL, fallbackImgSize));
-					} catch(NumberFormatException | MalformedURLException e) {
-						System.out.println("Fallback image selection failed: " + getArticleTitle());
-					}
+					} catch(MalformedURLException e) {
+						System.out.printf("Fallback image selection failed(%s): %s%n", 
+								getArticleTitle(), (getImageURL(null) != null 
+								? getImageURL(null).toString() : "unable to fetch image URL"));
+					} 
 				} else {
-					System.out.println("Fallback image selection failed: " + getArticleTitle());
+					System.out.printf("Fallback image selection failed(%s): %s%n", 
+							getArticleTitle(), (getImageURL(null) != null 
+							? getImageURL(null).toString() : "unable to fetch image URL"));
 				}
 			}
 			return images.toArray(new ImageReference[images.size()]);

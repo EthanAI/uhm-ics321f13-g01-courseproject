@@ -2,13 +2,16 @@ package edu.hawaii.ics321f13.view.impl;
 
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JScrollPane;
@@ -20,6 +23,7 @@ import javax.swing.table.DefaultTableModel;
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
+import edu.hawaii.ics321f13.util.GlobalStopWatch;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ResultsPage;
@@ -154,7 +158,18 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			return;
 		}
 		if(!tablePrepared) {
-			prepareTable();
+			try {
+				EventQueue.invokeAndWait(new Runnable() {
+
+					@Override
+					public void run() {
+						prepareTable();
+					}
+					
+				});
+			} catch (InvocationTargetException | InterruptedException e) {
+				System.out.println("Unable to schedule table update on Event Dispatch Thread: " + e.getMessage());
+			}
 		}
 		// Rewind/Fast-forward the Traverser.
 		setTraversableIndex(PAGE_START_IDX);
@@ -165,9 +180,28 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 		ImageLoadListener listener = new ImageLoadListener() {
 			private final AtomicInteger row = new AtomicInteger(0); 
 			private final AtomicInteger col = new AtomicInteger(0);
+			private volatile boolean printedTimingInfo = false;
 			@Override
-			public synchronized void onLoaded(ImageResult loaded) {
-				resultsTblModel.setValueAt(loaded, row.get(), colOffset + col.get());
+			public synchronized void onLoaded(final ImageResult loaded) {
+				try {
+					EventQueue.invokeAndWait(new Runnable() {
+
+						@Override
+						public void run() {
+							resultsTblModel.setValueAt(loaded, RESULTS_TBL.convertRowIndexToModel(row.get()), 
+									RESULTS_TBL.convertColumnIndexToModel(colOffset + col.get()));
+							if(!printedTimingInfo) {
+								GlobalStopWatch.stop();
+								GlobalStopWatch.printElapsedTime("Page " + PAGE_IDX + " loaded in ", ".", 
+										TimeUnit.MILLISECONDS);
+								printedTimingInfo = true;
+							}
+						}
+						
+					});
+				} catch (InvocationTargetException | InterruptedException e) {
+					System.out.println("Unable to schedule table update on Event Dispatch Thread: " + e.getMessage());
+				}
 				if(col.get() >= COL_COUNT - 1) {
 					row.incrementAndGet();
 					col.set(0);
@@ -186,14 +220,7 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			
 			@Override
 			public void onError(Exception error) {
-				resultsTblModel.setValueAt(UIManager.getIcon("OptionPane.warningIcon"), 
-						row.get(), colOffset + col.get());
-				if(col.get() >= COL_COUNT - 1) {
-					row.incrementAndGet();
-					col.set(0);
-				} else {
-					col.incrementAndGet();
-				}
+				// Do nothing. Errors will be ignored and indicated with an ErrorImageResult();
 			}
 			
 		};
@@ -210,7 +237,6 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 	}
 	
 	public void scrollToVisible(boolean animate, Runnable onComplete) {
-		System.out.println("Scrolling page to visible: " + PAGE_IDX);
 		if(!animate) {
 			final Rectangle TARGET = RESULTS_TBL.getVisibleRect(); // Will be modified, so we must allocate a new rectangle.
 			int colIdx = (PAGE_IDX * COL_COUNT);
@@ -401,8 +427,10 @@ public class DefaultResultsPage implements ResultsPage<ImageResult> {
 			if(Math.abs(targetRect.x - visibleRect.x) < ANIM_FRAME_DELTA) {
 				// If we have reached the end of the animation, stop the timer.
 				visibleRect = targetRect;
-				ANIM_TIMER.stop();
-				ANIM_TIMER = null;
+				if(ANIM_TIMER != null) {
+					ANIM_TIMER.stop();
+					ANIM_TIMER = null;
+				}
 				if(ON_COMPLETE != null) {
 					ON_COMPLETE.run();
 				}

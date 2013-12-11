@@ -75,6 +75,7 @@ import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 import edu.hawaii.ics321f13.model.interfaces.ResultConstraint;
 import edu.hawaii.ics321f13.model.interfaces.Traversable;
 import edu.hawaii.ics321f13.model.interfaces.Traverser;
+import edu.hawaii.ics321f13.util.GlobalStopWatch;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoadListener;
 import edu.hawaii.ics321f13.view.interfaces.ImageLoader;
 import edu.hawaii.ics321f13.view.interfaces.ImageTransformer;
@@ -270,6 +271,7 @@ public class DefaultView extends JFrame implements View {
 						public void run() {
 							setBusy(false);
 							if(currentPage.hasPreviousPage() && currentPage.previousPage().isClosed()) {
+								GlobalStopWatch.start();
 								currentPage.previousPage().populatePage(); //TODO Get preloading previous/next page working.
 							}
 						}
@@ -328,6 +330,7 @@ public class DefaultView extends JFrame implements View {
 						public void run() {
 							setBusy(false);
 							if(currentPage.hasNextPage() && currentPage.nextPage().isClosed()) {
+								GlobalStopWatch.start();
 								currentPage.nextPage().populatePage(); // TODO Get preloading previous/next page working.
 							}
 						}
@@ -543,6 +546,7 @@ public class DefaultView extends JFrame implements View {
 			public void run() {
 				setBusy(false);
 				if(currentPage.hasNextPage()) {
+					GlobalStopWatch.start();
 					currentPage.nextPage().populatePage();
 				}
 			}
@@ -744,7 +748,7 @@ public class DefaultView extends JFrame implements View {
 				// For double clicks, open the image in the user's web browser.
 				if(e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() % 2 == 0) {
 					URL imageUrl = ((ImageResult) tblImageResults.getValueAt(row, col)).getImageURL();
-					if(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+					if(imageUrl != null && Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
 						try {
 							Desktop.getDesktop().browse(imageUrl.toURI());
 						} catch (IOException | URISyntaxException e1) {
