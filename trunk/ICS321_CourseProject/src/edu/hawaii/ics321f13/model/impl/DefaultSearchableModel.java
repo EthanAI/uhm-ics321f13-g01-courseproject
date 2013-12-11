@@ -170,21 +170,21 @@ public class DefaultSearchableModel implements SearchableModel {
 		
 		private final ResultSet QUERY_RESULTS;
 		private int lastIdx = -1;
-		// Next retreival.
+		// Next retrieval.
 		private boolean hasNext = false;
 		private boolean nextQueried = false;
-		// Previous retreival.
+		// Previous retrieval.
 		private boolean hasPrevious = false;
 		private boolean previousQueried = false;
 		
-		/*
+		/**
 		 * Constructor builds a traversable structure for the query results
 		 */
 		public ImageResultTraverser(ResultSet queryResults) {
 			QUERY_RESULTS = Objects.requireNonNull(queryResults);
 		}
 		
-		/*
+		/**
 		 * Moves the cursor forward one element in the query result list
 		 * 
 		 * @return boolean indicating if there in fact is a next member
@@ -207,7 +207,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			return hasNext;
 		}
 
-		/*
+		/**
 		 * Gets the next member in the list of results and returns the <code>ImageResult</code> associated with it
 		 * 
 		 * @return <code>ImageResult</code> Image associated with the next article in the list
@@ -223,7 +223,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			}
 		}
 		
-		/*
+		/**
 		 * Attempts to remove an element from the list. Not supported with this version of the implementation
 		 */
 		@Override
@@ -231,7 +231,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			throw new UnsupportedOperationException("result set not modifiable");
 		}
 
-		/*
+		/**
 		 * Moves the cursor back one element in the query result list
 		 * 
 		 * @return boolean indicating if there in fact is a previous member
@@ -251,7 +251,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			return hasPrevious;
 		}
 
-		/*
+		/**
 		 * Gets the previous member in the list of results and returns the <code>ImageResult</code> associated with it
 		 * 
 		 * @return <code>ImageResult</code> Image associated with the previous article in the list
@@ -267,7 +267,7 @@ public class DefaultSearchableModel implements SearchableModel {
 			}
 		}
 		
-		/*
+		/**
 		 * Gets the <code>ImageResult</code> from the currently selected result out of the query results. Takes the image name found in the database,
 		 * appends it to the URL stub of the wikicommons webpage, sends that URL to the <code>DefaultImageResult</code> class which extracts the actual image
 		 * from that page and returns it

@@ -8,15 +8,14 @@ import edu.hawaii.ics321f13.model.interfaces.LoginInfo;
 import edu.hawaii.ics321f13.model.interfaces.SearchableModel;
 
 /**
- * Factory that creates the <code>SearchableModel</code> that will be used by the controller
- * Uses <code>DataModelFactory</code> interface
+ * uses the login and port number for the database and updates the view
  */
 public class DefaultDataModelFactory implements DataModelFactory {
 
 	/**
-	 * Creates the <code>SearchableModel</code> 
+	 * Gathers the login and port to log on the database then returns an error if it failed to connect
 	 * 
-	 * @param login - <code>LoginInfo</code> for the model
+	 * @param login - the login information that is used for the model
 	 * @param port - port for the model
 	 */
 	@Override

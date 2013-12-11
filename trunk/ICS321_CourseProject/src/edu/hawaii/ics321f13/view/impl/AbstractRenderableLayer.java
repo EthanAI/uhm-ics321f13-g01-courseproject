@@ -31,6 +31,12 @@ import javax.swing.plaf.LayerUI;
 
 import edu.hawaii.ics321f13.view.interfaces.RenderableLayer;
 
+/**
+ * 
+ * The view that displays the results and user interface. Also has all the listeners that receive user input and 
+ * sends it to the controller
+ *
+ */
 public abstract class AbstractRenderableLayer extends LayerUI<JComponent> implements RenderableLayer {
 
 	/** Serialization support. */

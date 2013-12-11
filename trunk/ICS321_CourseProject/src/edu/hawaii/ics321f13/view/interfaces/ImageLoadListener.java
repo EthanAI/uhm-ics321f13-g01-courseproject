@@ -4,6 +4,9 @@ import java.util.EventListener;
 
 import edu.hawaii.ics321f13.model.interfaces.ImageResult;
 
+/**
+ * 
+ */
 public interface ImageLoadListener extends EventListener {
 	
 	void onLoaded(ImageResult loaded);
