@@ -69,6 +69,9 @@ public class AsyncImageLoader implements ImageLoader {
 				OBSERVER.onLoaded(LDR_IMAGE);
 			} catch (Exception e) {
 				OBSERVER.onError(e);
+				ErrorImageResult errImgRslt = new ErrorImageResult(e);
+				LOADED.add(errImgRslt);
+				OBSERVER.onLoaded(errImgRslt);
 			}
 			if(SYNC.decrementAndGet() <= 0) {
 				OBSERVER.onLoaded(LOADED.toArray(new ImageResult[LOADED.size()]));

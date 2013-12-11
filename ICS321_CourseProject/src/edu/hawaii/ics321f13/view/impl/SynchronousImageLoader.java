@@ -33,8 +33,11 @@ public class SynchronousImageLoader implements ImageLoader {
 				result.getImage(targetImageSize); // Load the actual image.
 				loaded.add(result);
 				observer.onLoaded(result);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				observer.onError(e);
+				ErrorImageResult errImgRslt = new ErrorImageResult(e);
+				loaded.add(errImgRslt);
+				observer.onLoaded(errImgRslt);
 			}
 		}
 		observer.onLoaded(loaded.toArray(new ImageResult[loaded.size()]));
