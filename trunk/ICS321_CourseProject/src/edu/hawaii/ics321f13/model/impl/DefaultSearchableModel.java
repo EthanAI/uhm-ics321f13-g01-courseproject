@@ -84,17 +84,15 @@ public class DefaultSearchableModel implements SearchableModel {
 		String sql = null;
 		int maxImages = 200;
 		if(resultType.equals(ImageResult.class)) {
-			if(true) {
-				sql = "SELECT page_title, il_to FROM page, searchindex, imagelinks WHERE page_id=si_page and il_from = page_id " +
-						"AND il_to regexp '^[a-zA-Z0-9._,-]*$' AND MATCH(si_title) AGAINST('" + 
-						key + 
-						"' IN boolean MODE) AND page_is_redirect=0 AND page_namespace IN (0) limit " +
-						maxImages;
-				
-			} else {
-				sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
-						" WHERE title LIKE '%" + key + "%' limit " + maxImages; 	// Loose matching. cat = catherine
-			}
+			// ------------> Strict Matching SQL Query <------------------
+			sql = "SELECT page_title, il_to FROM page, searchindex, imagelinks WHERE page_id=si_page and il_from = page_id " +
+					"AND il_to regexp '^[a-zA-Z0-9._,-]*$' AND MATCH(si_title) AGAINST('" + 
+					key + 
+					"' IN boolean MODE) AND page_is_redirect=0 AND page_namespace IN (0) limit " +
+					maxImages;
+			// ------------> Loose Matching SQL Query <------------------
+//			sql = 	"SELECT * FROM " + TITLE_IMAGE_TABLE + 
+//					" WHERE title LIKE '%" + key + "%' limit " + maxImages; 	// Loose matching. cat = catherine
 		}
 		if(sql != null) {
 			System.out.println(sql);
